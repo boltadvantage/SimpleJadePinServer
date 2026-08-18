@@ -351,19 +351,10 @@ Packaged and maintained by [Bolt Advantage](https://boltadvantage.com).
 
 ## License
 
-**The upstream project does not carry a license file**, which means the original
-code is by default "all rights reserved" under copyright. Forking and viewing it
-on GitHub is permitted by GitHub's Terms of Service, but that does not grant a
-right to redistribute — and publishing compiled binaries is redistribution.
+MIT — see [LICENSE](LICENSE).
 
-This fork therefore does **not** assert a license over the inherited code, and
-no license is claimed here on Filiprogrammer's behalf.
-
-Modifications made in this fork (desktop packaging, offline hardening, camera
-handling, key management, styling) are offered by Bolt Advantage, LLC under the
-MIT license, to the extent they are separable from the original work.
-
-See [LICENSE](LICENSE) for the full text.
-
-If you are Filiprogrammer: we would be glad to see an explicit license on the
-upstream project, and will comply with whatever you choose.
+The upstream project is MIT licensed, and this fork carries that forward.
+Copyright is held by Filiprogrammer for the original work and by
+Bolt Advantage, LLC for the modifications made here. Thanks to
+[@Filiprogrammer](https://github.com/Filiprogrammer) for adding a license to
+the upstream project.
