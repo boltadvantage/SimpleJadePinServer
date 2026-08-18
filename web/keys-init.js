@@ -14,6 +14,21 @@
       setText("pub_key", s.public_key);
       setText("pin_records", s.pin_records + (s.pin_records === 1 ? " record" : " records"));
       setText("backup_paths", s.data_dir);
+      setText("server_addr", "http://" + s.listen + ":" + s.port);
+
+      // USB/BLE unlock depends on Green reaching the URL stored on the Jade,
+      // which is normally port 4443. Say so plainly when it is not.
+      if (s.port !== 4443) {
+        var w = document.getElementById("port_warning");
+        if (w) {
+          w.style.display = "block";
+          setText("port_warning_detail",
+            "This server is on port " + s.port + ", not the usual 4443. " +
+            "QR unlock is unaffected, but USB and Bluetooth unlock will fail " +
+            "because Blockstream Green connects to the address stored on your " +
+            "Jade. Quit whatever else is using port 4443 and restart this app.");
+        }
+      }
 
       if (s.keys_created_this_run) {
         document.getElementById("new_key_warning").style.display = "block";

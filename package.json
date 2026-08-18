@@ -1,7 +1,7 @@
 {
   "name": "bolt-jade-pin-server",
   "productName": "Jade PIN Server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Self-hosted, fully offline blind PIN oracle for the Blockstream Jade hardware wallet.",
   "homepage": "https://boltadvantage.com",
   "license": "MIT",

@@ -4,7 +4,9 @@ A self-hosted blind PIN oracle for the [Blockstream Jade](https://blockstream.co
 packaged as a desktop application that runs entirely offline.
 
 Supports **QR PIN Unlock**, which makes it possible to use a Jade in a fully
-air-gapped way — no USB, no Bluetooth, no network.
+air-gapped way — no USB, no Bluetooth, no network. USB and Bluetooth unlock via
+Blockstream Green are equally supported, including configuring the oracle over
+a USB cable when a camera is not an option.
 
 > Forked from [SimpleJadePinServer](https://github.com/Filiprogrammer/SimpleJadePinServer)
 > by [Filiprogrammer](https://github.com/Filiprogrammer). The blind-oracle
@@ -228,9 +230,32 @@ Scan the generated code, then confirm the details on screen.
 > To migrate an existing setup, copy your keys across instead — see above.
 
 If you only ever use the Jade in QR mode, the URL does not matter; the public key
-is the only field that counts. The URL must be correct and reachable only for
-firmware upgrades over USB or Bluetooth. (The Jade Plus can upgrade firmware
-air-gapped via USB storage, so this does not apply to it.)
+is the only field that counts. The URL must be correct and reachable for
+USB/Bluetooth unlock and for firmware upgrades over USB or Bluetooth. (The Jade
+Plus can upgrade firmware air-gapped via USB storage, so the firmware part does
+not apply to it.)
+
+### Alternative: point the Jade at the server over USB
+
+If the camera cannot scan the Oracle QR — an old or awkward webcam, or a machine
+with no camera at all — configure the oracle over a USB cable instead, using
+Blockstream's own script. This does the same job as scanning the QR code.
+
+```bash
+git clone https://github.com/Blockstream/Jade
+cd Jade
+python3 set_jade_pinserver.py \
+    --serialport <YOUR_JADE_SERIAL_PORT> \
+    --set-pubkey /path/to/server_keys/public.key \
+    --set-url http://127.0.0.1:4443
+```
+
+`public.key` lives in the data directory shown on the **Keys & backup** page.
+The serial port is typically `/dev/ttyUSB0` or `/dev/ttyACM0` on Linux and
+something like `/dev/cu.usbserial-*` on macOS.
+
+Unlike the QR route, the URL genuinely matters here: pass the address the server
+actually listens on, and keep it reachable from wherever Blockstream Green runs.
 
 ### QR mode
 
@@ -257,9 +282,29 @@ interface connected (`snap connect firefox:camera`), or your user is not in the
 
 ### USB or Bluetooth mode
 
-Use the Jade with Blockstream Green as normal. Green warns the first time that a
-non-default blind oracle is in use — click **Advanced**, enable **Don't ask me
-again for this oracle**, then **Allow Non-Default Connection**.
+A fully supported alternative to QR mode, and the practical choice when the
+camera is unavailable.
+
+Leave this application running — it must be running for the unlock to succeed,
+because Green talks to it over HTTP. Then use the Jade with Blockstream Green as
+normal. Green warns the first time a non-default blind oracle is used: click
+**Advanced**, enable **Don't ask me again for this oracle**, then **Allow
+Non-Default Connection**.
+
+**The port matters in this mode.** Green connects to the URL stored on your Jade,
+normally `http://127.0.0.1:4443`. The app binds `4443` whenever it is free; if
+something else holds that port it falls back to a random one, and USB/BLE unlock
+will then fail. The **Keys & backup** page shows the address in use and warns
+when it is not the standard port. QR mode is unaffected either way.
+
+Green must run on the same machine as this application. That is the intended
+arrangement: the server binds `127.0.0.1` only, so nothing it does is reachable
+from any network, and an air-gapped machine needs nothing further.
+
+A `--listen` option exists for the unusual case of Green running on a separate
+device, but it exposes PIN attempts to whoever can reach the port and relaxes
+DNS-rebinding protection. It is not needed for normal use, including on an
+air-gapped machine, and is best left alone.
 
 ![Green non-default oracle warning](docs/images/green_non_default_oracle_warning_advanced.png)
 
@@ -311,6 +356,15 @@ runner. The release workflow does this on an ephemeral CI matrix.
   outside it are rejected.
 - The desktop shell runs the renderer with `contextIsolation`, `sandbox`, and no
   Node integration. The preload exposes exactly one method.
+- Requests carrying a non-loopback `Host` header are refused, which blocks DNS
+  rebinding: without it, a page whose domain is re-pointed at `127.0.0.1`
+  becomes same-origin with this server and can read its responses, including the
+  data directory path and server public key.
+- Requests carrying a foreign `Origin` are refused, so a web page cannot drive
+  the oracle endpoints even blindly. No CORS headers are ever sent, so responses
+  are unreadable cross-origin regardless.
+- Stored PIN filenames derive from a SHA-256 hash and are always 64 hex
+  characters, so caller-influenced input cannot escape the pins directory.
 - Camera permission is granted only to the app's own loopback origin; every
   other permission, including microphone, is denied.
 - `wallycore` — the cryptographic library that ships inside the binary — is
