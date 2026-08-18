@@ -1,8 +1,9 @@
 services:
-  simple_jade_pin_server:
+  jade_pin_server:
     build: .
     ports:
       - "18080:4443"
     volumes:
+      # Key material lives here. Back this directory up - see README.
       - ./key_data:/app/key_data
-    command: ["--no-tls"]
+    command: ["--no-tls", "--listen", "0.0.0.0", "--data-dir", "/app/key_data"]

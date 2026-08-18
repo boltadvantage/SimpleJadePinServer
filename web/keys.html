@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>Keys &amp; backup — Jade PIN Server</title>
+    <link rel="icon" href="assets/icon.png">
+    <link rel="stylesheet" href="assets/bolt.css">
+    <script src="keys-init.js"></script>
+    <script src="page-init.js"></script>
+</head>
+<body>
+
+<header class="masthead">
+    <img src="assets/bolt_advantage_logo.svg" alt="Bolt Advantage">
+    <span class="divider"></span>
+    <h1>Keys &amp; backup</h1>
+    <span class="spacer"></span>
+    <span class="airgap"><span class="dot"></span>Offline</span>
+</header>
+
+<main>
+    <p class="topline"><a href="index.html">&larr; Back to PIN server</a></p>
+
+    <div id="new_key_warning" class="alert err" style="display:none;">
+        <strong>A new server keypair was generated on this machine.</strong>
+        <p>
+            A Jade that was already configured against a <em>different</em> server
+            key will not unlock here. If you are moving an existing setup to this
+            machine, restore your backup as described below instead of setting up
+            fresh.
+        </p>
+    </div>
+
+    <div id="migrated_notice" class="alert ok" style="display:none;">
+        <strong>Existing key data was imported.</strong>
+        <p id="migrated_path"></p>
+    </div>
+
+    <!-- ── Current state ────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-head"><h2>This installation</h2></div>
+
+        <div class="readout" style="max-height:none;">
+            <span class="tag">Data directory</span>
+            <div id="data_dir">…</div>
+        </div>
+
+        <div class="readout" style="max-height:none;">
+            <span class="tag">Server public key</span>
+            <div id="pub_key">…</div>
+        </div>
+
+        <div class="readout" style="max-height:none;">
+            <span class="tag">Stored PIN records</span>
+            <div id="pin_records">…</div>
+        </div>
+
+        <div class="btn-row" style="margin-top:16px;">
+            <button id="btn_open" class="ghost">Open data folder</button>
+        </div>
+        <p class="progress" id="open_hint"></p>
+    </section>
+
+    <!-- ── What matters ─────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-head"><h2>What these files are</h2></div>
+
+        <div class="readout" style="max-height:none;">
+            <span class="tag">server_keys/private.key</span>
+            <div style="font-family:var(--sans); font-size:13.5px; color:var(--muted);">
+                The 32-byte static server private key. Your Jade is configured to
+                trust the public key derived from it, and your PIN records are
+                encrypted with a key derived from it. <b>Lose this and PIN unlock
+                stops working permanently.</b>
+            </div>
+        </div>
+
+        <div class="readout" style="max-height:none;">
+            <span class="tag">server_keys/public.key</span>
+            <div style="font-family:var(--sans); font-size:13.5px; color:var(--muted);">
+                Derived from the private key, so it needs no separate backup. This
+                is what the Oracle QR code encodes.
+            </div>
+        </div>
+
+        <div class="readout" style="max-height:none;">
+            <span class="tag">pins/*.pin</span>
+            <div style="font-family:var(--sans); font-size:13.5px; color:var(--muted);">
+                The encrypted PIN records — one per wallet. This is what actually
+                releases the wallet key when you enter the correct PIN.
+                <b>Both the private key and the matching .pin file are required.</b>
+                Neither alone is enough.
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Backup ───────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-head"><h2>Backing up</h2></div>
+        <p class="sub" style="margin-left:0;">
+            Copy the whole data directory somewhere safe, ideally to encrypted
+            offline media.
+        </p>
+
+        <div class="readout" style="max-height:none;">
+            <span class="tag">Copy this entire folder</span>
+            <div id="backup_paths">…</div>
+        </div>
+
+        <div class="alert warn show">
+            <strong>Treat this backup like a wallet backup.</strong>
+            Anyone holding both the backup and your Jade gets unlimited PIN
+            attempts, because restoring the files also restores the
+            three-strikes counter. Keep it encrypted, and keep it off any
+            networked machine.
+        </div>
+
+        <div class="alert err show">
+            <strong>Keep this out of cloud sync and automatic backups.</strong>
+            <p>
+                The default data directory sits inside a folder that consumer
+                backup and sync tools capture by default. Your server private key
+                is the secret that guards PIN access to your wallet — sending a
+                copy to a third-party server quietly undoes the point of running
+                an air-gapped oracle.
+            </p>
+            <p style="margin-top:8px;">Check specifically for:</p>
+            <ul>
+                <li><b>macOS</b> — Time Machine backs up
+                    <code>~/Library/Application Support</code>. Exclude this folder
+                    under System Settings → General → Time Machine → Options.</li>
+                <li><b>iCloud Drive</b> — if Desktop &amp; Documents syncing is on,
+                    keep backups out of those two folders.</li>
+                <li><b>Google Drive, Dropbox, OneDrive</b> — never place a backup
+                    inside a synced folder. These upload silently and retain
+                    deleted-file history.</li>
+                <li><b>Windows</b> — OneDrive folder redirection often captures
+                    <code>%APPDATA%</code>-adjacent user folders. Verify before
+                    trusting it.</li>
+            </ul>
+            <p style="margin-top:8px;">
+                Prefer an encrypted USB drive or other offline media that never
+                touches a networked machine.
+            </p>
+        </div>
+
+        <div class="alert show" style="border-color:var(--line); background:var(--navy-dk); color:var(--muted);">
+            <strong style="color:var(--ink);">This backup is not a wallet backup.</strong>
+            It restores PIN unlock only. If you lose it, your funds are still
+            recoverable from your BIP39 recovery phrase — that phrase remains the
+            thing you must never lose.
+        </div>
+    </section>
+
+    <!-- ── Restore ──────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-head"><h2>Restoring onto a new machine</h2></div>
+        <p class="sub" style="margin-left:0;">
+            Use this when moving an already-configured Jade to a fresh install —
+            do <b>not</b> re-scan the Oracle QR, which would require a factory reset.
+        </p>
+
+        <ol style="color:var(--muted); font-size:14px; padding-left:20px;">
+            <li style="margin-bottom:10px;">Quit this application completely.</li>
+            <li style="margin-bottom:10px;">
+                Copy your backed-up <code>server_keys/</code> and <code>pins/</code>
+                folders into the data directory shown above, replacing anything
+                generated there.
+            </li>
+            <li style="margin-bottom:10px;">Start the application again.</li>
+            <li style="margin-bottom:10px;">
+                Return to this page and confirm the <b>server public key</b> matches
+                the one your Jade was configured with.
+            </li>
+        </ol>
+
+        <div class="readout" style="max-height:none;">
+            <span class="tag">Alternative — run against a backup in place</span>
+            <div>SimpleJadePinServer --data-dir /path/to/your/backup</div>
+        </div>
+
+        <div class="alert show" style="border-color:var(--line); background:var(--navy-dk); color:var(--muted);">
+            <strong style="color:var(--ink);">Upgrading from the original script?</strong>
+            If a <code>key_data/</code> folder from the upstream
+            SimpleJadePinServer is found next to the app or in the working
+            directory, it is imported automatically on first run and the original
+            is left untouched as a backup.
+        </div>
+    </section>
+</main>
+
+<footer>
+    <a href="https://boltadvantage.com">
+        <img src="assets/bolt_advantage_logo.svg" alt="Bolt Advantage" class="logo">
+    </a>
+    <p><a href="https://boltadvantage.com">boltadvantage.com</a></p>
+    <p>&copy; 2026 Bolt Advantage, LLC.</p>
+    <div class="credit">
+        <p>
+            Forked from <a href="https://github.com/Filiprogrammer/SimpleJadePinServer">SimpleJadePinServer</a>
+            by <a href="https://github.com/Filiprogrammer">Filiprogrammer</a>.
+            Not affiliated with or endorsed by Blockstream.
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>

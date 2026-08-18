@@ -1,0 +1,191 @@
+name: Build release
+
+# PyInstaller cannot cross-compile, so each artifact is built on a native
+# runner. Runners are ephemeral, which is what lets the published provenance
+# attestation mean something.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            name: linux
+            artifact: "*.AppImage"
+          - os: macos-14
+            name: mac-arm64
+            artifact: "*.dmg"
+          - os: macos-13
+            name: mac-x64
+            artifact: "*.dmg"
+          - os: windows-2022
+            name: windows
+            artifact: "*.exe"
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # wallycore ships inside the binary, so it is installed hash-pinned.
+      # A mismatch fails the build rather than shipping an unverified artifact.
+      - name: Install Python dependencies (hash-pinned)
+        run: |
+          python -m pip install --upgrade pip
+          pip install --require-hashes -r requirements.txt
+          pip install -r requirements-build.txt
+
+      # --ignore-scripts blocks the lifecycle-script vector used by most npm
+      # supply-chain attacks. Electron's binary is fetched separately below.
+      - name: Install Node dependencies (locked, no scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Fetch Electron binary
+        run: node node_modules/electron/install.js
+
+      - name: Freeze PIN server
+        run: pyinstaller --clean --noconfirm build/server.spec
+
+      - name: Verify frozen server starts
+        shell: bash
+        run: |
+          set -e
+          BIN="dist/server/SimpleJadePinServer"
+          [ "${{ runner.os }}" = "Windows" ] && BIN="dist/server/SimpleJadePinServer.exe"
+          "$BIN" --no-tls --port 45999 --data-dir "${{ runner.temp }}/ci-data" &
+          PID=$!
+          sleep 8
+          curl -fsS http://127.0.0.1:45999/status > /dev/null
+          curl -fsS http://127.0.0.1:45999/vendor/html5-qrcode.min.js > /dev/null
+          echo "frozen server serves correctly"
+          # Exercise the real blind-oracle protocol against the frozen binary.
+          python tests/test_oracle.py http://127.0.0.1:45999
+          kill $PID 2>/dev/null || true
+
+      - name: Build installer
+        env:
+          # Unsigned by design for now; documented in the README.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ""
+        run: npx electron-builder --publish never
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p out
+          find release -maxdepth 1 -type f \
+            \( -name "*.AppImage" -o -name "*.dmg" -o -name "*.exe" -o -name "*.zip" \) \
+            -exec cp {} out/ \;
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: out/*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      id-token: write      # required for build provenance
+      attestations: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: staging
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p dist
+          find staging -type f -exec cp {} dist/ \;
+          ls -la dist
+
+      # Integrity manifest. Proves a download matches what was published;
+      # it does NOT prove the binary matches source (see README).
+      - name: Generate SHA256SUMS
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      # Optional authorship signature. Skipped cleanly when no key is set, so
+      # the workflow still succeeds before signing is configured.
+      - name: Sign SHA256SUMS
+        if: ${{ env.GPG_PRIVATE_KEY != '' }}
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          cd dist
+          gpg --batch --yes --pinentry-mode loopback \
+              --passphrase "$GPG_PASSPHRASE" \
+              --armor --detach-sign --output SHA256SUMS.asc SHA256SUMS
+          gpg --verify SHA256SUMS.asc SHA256SUMS
+
+      # Ties each binary to this exact commit and workflow run. No key
+      # management, and it leaks nothing personal.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            dist/*.AppImage
+            dist/*.dmg
+            dist/*.exe
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: dist/*
+          draft: true
+          generate_release_notes: true
+          body: |
+            ## Verifying your download
+
+            Every file below is listed in `SHA256SUMS`.
+
+            ```bash
+            sha256sum -c SHA256SUMS --ignore-missing
+            ```
+
+            If `SHA256SUMS.asc` is present, verify authorship first:
+
+            ```bash
+            gpg --verify SHA256SUMS.asc SHA256SUMS
+            ```
+
+            You can also verify build provenance against this repository:
+
+            ```bash
+            gh attestation verify <file> --repo ${{ github.repository }}
+            ```
+
+            > These checks prove you received the file we published and that it
+            > was built from this commit by this workflow. They do not prove
+            > byte-for-byte correspondence with the source — Electron and
+            > PyInstaller builds are not reproducible.
+
+            **macOS:** the app is unsigned. On first launch, right-click it and
+            choose *Open*, or run
+            `xattr -dr com.apple.quarantine "/Applications/Jade PIN Server.app"`.

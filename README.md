@@ -1,162 +1,320 @@
-SimpleJadePinServer
-===================
+# Jade PIN Server
 
-A simple reimplementation of the [blind_pin_server](https://github.com/Blockstream/blind_pin_server) for the Blockstream Jade hardware wallet, along with a very basic web interface.
+A self-hosted blind PIN oracle for the [Blockstream Jade](https://blockstream.com/jade/),
+packaged as a desktop application that runs entirely offline.
 
-This implementation supports QR Pin Unlock, unlike Blockstream's version of the self-hosted blind oracle. This makes it the only self-hosted implementation that allows the Jade hardware wallet to be used in an air-gapped way.
+Supports **QR PIN Unlock**, which makes it possible to use a Jade in a fully
+air-gapped way — no USB, no Bluetooth, no network.
 
-> [!NOTE]
-> The newest version of `SimpleJadePinServer` requires Jade firmware that includes support for the shorter two-step blind oracle protocol, which was first implemented in version 1.0.28. If you need to use the old four-step protocol, you can revert to [v1](https://github.com/Filiprogrammer/SimpleJadePinServer/tree/v1).
+> Forked from [SimpleJadePinServer](https://github.com/Filiprogrammer/SimpleJadePinServer)
+> by [Filiprogrammer](https://github.com/Filiprogrammer). The blind-oracle
+> protocol implementation remains substantially theirs; this fork adds desktop
+> packaging, offline hardening, camera fixes and key-management tooling.
+> Not affiliated with or endorsed by Blockstream.
 
-Running SimpleJadePinServer
----------------------------
+---
 
-### Prerequisites
+## Download
 
-```console
-apt update
-apt install python3 python3-pip python3-venv
-python3 -m venv venv
-source venv/bin/activate
-pip install wallycore
+Grab the installer for your system from the [Releases page](../../releases):
+
+| System | File |
+|---|---|
+| Linux | `Jade-PIN-Server-*.AppImage` |
+| macOS (Apple Silicon) | `Jade-PIN-Server-*-arm64.dmg` |
+| macOS (Intel) | `Jade-PIN-Server-*.dmg` |
+| Windows | `Jade-PIN-Server-Setup-*.exe` |
+
+Nothing else is required — no Python, no pip, no Docker, no certificates.
+
+**Linux:** mark it executable and run it.
+
+```bash
+chmod +x Jade-PIN-Server-*.AppImage && ./Jade-PIN-Server-*.AppImage
 ```
 
-### Optional: Get an SSL/TLS certificate
+**macOS:** the app is not signed with an Apple Developer certificate, so
+Gatekeeper blocks it on first launch. Right-click the app and choose **Open**,
+or clear the quarantine flag:
 
-To use the web interface from a non-localhost connection, an SSL/TLS certificate is needed. This is because modern web browsers require secure context (HTTPS or localhost) for the web interface to access the webcam, which is needed to scan the QR codes of the Jade.
-
-#### Example: Generate a self signed certificate
-
-```console
-mkdir key_data
-cd key_data
-openssl req -new -x509 -keyout server.pem -out server.pem -days 3650 -nodes
-cd ..
+```bash
+xattr -dr com.apple.quarantine "/Applications/Jade PIN Server.app"
 ```
 
-This will create a certificate (`server.pem`) in the `key_data` directory.
+---
 
-#### Alternative: Use a Reverse Proxy
+## Verifying your download
 
-Alternatively a reverse proxy (such as Caddy or NGINX) can be used to serve the web interface over HTTPS.
+Each release ships a `SHA256SUMS` file.
 
-### Start SimpleJadePinServer.py
-
-```console
-python3 SimpleJadePinServer.py
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
 ```
 
-On first run, a static server key pair (`private.key` and `public.key`) will be generated in the `key_data/server_keys` directory.
+If `SHA256SUMS.asc` is present, check authorship before trusting the sums:
 
-The web interface will be available at https://127.0.0.1:4443
-
-To disable TLS use the `--no-tls` option
-
-```console
-python3 SimpleJadePinServer.py --no-tls
+```bash
+gpg --verify SHA256SUMS.asc SHA256SUMS
 ```
 
-The web interface will be available at http://127.0.0.1:4443
+You can also verify that a binary came from this repository's build workflow:
 
-![SimpleJadePinServer web interface](docs/images/webui.png)
-
-Running SimpleJadePinServer with Docker Compose
------------------------------------------------
-
-Instead of manually installing the dependencies, SimpleJadePinServer can be launched in a Docker container using the provided `docker-compose.yml` file:
-
-```console
-docker compose up
+```bash
+gh attestation verify <file> --repo boltadvantage/SimpleJadePinServer
 ```
 
-The web interface will be available at http://127.0.0.1:18080
+**What these checks do and do not prove.** They prove you received the file that
+was published, and that it was produced by this workflow from a specific commit.
+They do **not** prove the binary corresponds byte-for-byte to the source in this
+repository — Electron and PyInstaller builds are not reproducible, so an
+independent rebuild will not produce an identical file. Anyone requiring that
+guarantee should build from source and read the code.
 
-> [!TIP]
-> Docker Compose will start the server without TLS - use a reverse proxy like Caddy or NGINX if you need to serve from a non-localhost address.
+---
 
-Pointing the Jade to the pin server
------------------------------------
+## Runs entirely offline
 
-To point the Jade to the pin server, click the "Oracle QR code" link or navigate to https://127.0.0.1:4443/oracle_qr.html
+This application makes no network requests of any kind. That is enforced in
+three independent places:
 
-![Oracle QR web UI](docs/images/webui_oracle_qr.png)
+- **No remote assets.** The QR scanning library is vendored into the repository.
+  Upstream loaded it from a CDN, which is why scanning failed outright on
+  air-gapped machines. Fonts are system fonts; nothing is fetched.
+- **Content Security Policy.** The server sends a CSP restricting every resource
+  class to `'self'`.
+- **Process-level blocking.** The desktop shell cancels any request whose host is
+  not loopback, so even a compromised page cannot originate outbound traffic.
 
-Click the "Generate QR code" button.
+The only listening socket is bound to `127.0.0.1` on a port chosen at startup.
 
-Power on the Jade and access the boot menu by clicking (not holding) the select button once while the logo appears.
+---
 
-> [!IMPORTANT]
-> Jade will need to be uninitialized in order to set a new blind oracle. If your Jade is already set up, you will need to perform a factory reset and **restore using your recovery phrase as your wallet will be deleted. Your funds will be lost if you do not have the correct backup materials.**
->
-> Source: https://help.blockstream.com/hc/en-us/articles/12800132096793-Set-up-a-personal-blind-oracle
+## Where your keys live
 
-![Jade Boot Menu](docs/images/jade_boot_menu_blind_oracle.png)
+| System | Location |
+|---|---|
+| macOS | `~/Library/Application Support/BoltJadePinServer` |
+| Windows | `%APPDATA%\BoltJadePinServer` |
+| Linux | `~/.local/share/BoltJadePinServer` |
 
-Select "Blind Oracle" and then "Scan Oracle QR".
+The in-app **Keys & backup** page shows the exact path, your server public key,
+and how many PIN records are stored.
 
-![Jade Scan Oracle QR](docs/images/jade_blind_oracle_scan_qr.png)
-
-Scan the the generated QR code and then confirm the details on screen.
-
-![Jade Confirm Pin Server](docs/images/jade_confirm_pin_server.png)
-
-> [!NOTE]
-> If the Jade is used only in QR mode, it does not matter where the URL points to, making the public key of the pin server the only important parameter.
->
-> However, firmware upgrades on an initialized Jade require the wallet to be unlocked over USB or Bluetooth, so the URL must be correct and reachable during that process. This requirement does not apply to the Jade Plus, since it supports air-gapped firmware upgrades via external USB storage.
->
-> Alternatively, one can always factory-reset the Jade, apply the firmware upgrade, and then re-initialize it afterwards.
-
-<details>
-<summary>Alternative setup via USB</summary>
-
-An alternate way of pointing the Jade to a custom pin server is via a USB connection to a computer using the `set_jade_pinserver.py` script in the Jade repository.
-
-```console
-git clone https://github.com/Blockstream/Jade
-cd Jade
-python3 set_jade_pinserver.py --serialport <ENTERJADESERIALPORT> --set-pubkey path/to/SimpleJadePinServer/public.key --set-url http://127.0.0.1:8086
 ```
-</details>
+BoltJadePinServer/
+├── server_keys/
+│   ├── private.key   ← the critical secret (0600)
+│   └── public.key    ← derived; no separate backup needed
+└── pins/
+    └── <hash>.pin    ← encrypted PIN records
+```
 
-The Jade is now configured with the static server public key of the `SimpleJadePinServer`.
+### What each file does
 
-Using SimpleJadePinServer in QR mode
-------------------------------------
+**`server_keys/private.key`** — the 32-byte static server private key. Your Jade
+is configured to trust the public key derived from it, and your PIN records are
+encrypted with a key derived from it.
 
-Once the Jade is configured to work with `SimpleJadePinServer`, initialize the wallet. When asked to select a connection, choose QR.
+**`pins/*.pin`** — the encrypted PIN records, one per wallet. This is what
+actually releases the wallet key when the correct PIN is entered.
 
-### Step 1/2
+**Both are required.** Neither alone is enough. Lose either one and PIN unlock
+stops working permanently for that wallet.
 
-After providing a six digit pin, the Jade will display Step 1/2 with a series of BC-UR QR codes. Click "Step 1/2 pin request - Jade &rarr; pin server" in the web interface. This will use the computer's camera to scan the QR codes displayed on the Jade.
+> **This is not a wallet backup.** It restores PIN unlock only. If you lose it,
+> your funds are still recoverable from your BIP39 recovery phrase. That phrase
+> remains the thing you must never lose.
 
-![Web UI Step 1/2](docs/images/webui_step1.png)
+### Backing up
 
-Once it is done scanning, the camera interface will automatically disappear.
+Copy the whole data directory to encrypted offline media.
 
-### Step 2/2
+> **Keep it out of cloud sync and automatic backups.** The default location sits
+> inside a folder that consumer backup tools capture by default. Your server
+> private key guards PIN access to your wallet; uploading a copy to a third
+> party quietly defeats the point of an air-gapped oracle. Check specifically
+> for **Time Machine** (excludes are under System Settings → General → Time
+> Machine → Options), **iCloud Drive** Desktop & Documents syncing, and
+> **Google Drive / Dropbox / OneDrive** synced folders — these upload silently
+> and retain deleted-file history. On Windows, OneDrive folder redirection often
+> captures user folders near `%APPDATA%`.
 
-Next click the button labelled "Step 2/2 pin reply - pin server &rarr; Jade". This will show a series of BC-UR QR codes.
+> **Treat the backup like wallet material.** Anyone holding both it and your Jade
+> gets unlimited PIN attempts, because restoring the files also restores the
+> three-strikes counter.
 
-![Web UI Step 2/2](docs/images/webui_step2.png)
+### Moving an existing Jade to a new machine
 
-On the Jade continue to Step 2/2 and scan the BC-UR QR codes.
+A fresh install generates a **new** keypair, and a Jade configured against a
+different key will not unlock. Do not re-scan the Oracle QR — that path requires
+a factory reset, which erases the wallet.
+
+Instead:
+
+1. Quit the application completely.
+2. Copy your backed-up `server_keys/` and `pins/` into the data directory above,
+   replacing what was generated there.
+3. Start the application again.
+4. Open **Keys & backup** and confirm the server public key matches the one your
+   Jade was configured with.
+
+Or run against a backup in place without copying anything:
+
+```bash
+"Jade PIN Server" --data-dir /path/to/your/backup
+```
+
+### Upgrading from the original script
+
+If a `key_data/` directory from the upstream SimpleJadePinServer is found in the
+working directory or next to the application, it is imported automatically on
+first run. The original is left untouched as a backup, and the import is
+reported on the **Keys & backup** page.
+
+---
+
+## Using it
+
+### Point your Jade at this server
+
+Open **Oracle QR code**, click **Generate QR code**, then on the Jade click the
+select button once as the logo appears to reach the boot menu, and choose
+**Blind Oracle → Scan Oracle QR**.
+
+![Jade boot menu](docs/images/jade_boot_menu_blind_oracle.png)
+![Scan Oracle QR](docs/images/jade_blind_oracle_scan_qr.png)
+
+Scan the generated code, then confirm the details on screen.
+
+![Confirm PIN server](docs/images/jade_confirm_pin_server.png)
+
+> The Jade must be uninitialized to set a new blind oracle. If yours is already
+> set up, this requires a factory reset and restore from your recovery phrase.
+> To migrate an existing setup, copy your keys across instead — see above.
+
+If you only ever use the Jade in QR mode, the URL does not matter; the public key
+is the only field that counts. The URL must be correct and reachable only for
+firmware upgrades over USB or Bluetooth. (The Jade Plus can upgrade firmware
+air-gapped via USB storage, so this does not apply to it.)
+
+### QR mode
+
+1. Enter your PIN on the Jade. It shows **Step 1/2** as a series of QR codes.
+2. In the app, click **Start camera scan** and point the camera at the Jade.
+   Progress is shown as frames are captured.
+3. Click **Generate reply QR**, then scan it from the Jade's **Step 2/2** screen.
 
 ![Jade scanning Step 2/2](docs/images/jade_scanning_step2.png)
 
-Once scanning is complete, you are done and the wallet is ready to be used.
+To unlock later, choose **QR Mode → QR PIN Unlock** on the Jade and repeat.
 
-### Unlocking the wallet
+### If the camera does not work
 
-If you want to unlock the wallet at some later point, select "QR Mode" -> "QR PIN Unlock" on the Jade. Enter your PIN and perform the same steps as described before.
+The app reports the specific cause rather than failing silently, and offers two
+fallbacks that need no camera at all:
 
-Using SimpleJadePinServer in USB or BLE mode
---------------------------------------------
+- **Scan from image** — photograph the Jade screen and load the image.
+- **Paste UR text** — enter the `ur:jade-pin/…` fragments directly.
 
-Once the Jade has its blind oracle configured to point to `SimpleJadePinServer`, simply use the Jade with Blockstream Green as normal. Blockstream Green might complain the first time, that a non-default blind oracle is being used.
+Common causes on Linux: the browser is a snap or flatpak without the camera
+interface connected (`snap connect firefox:camera`), or your user is not in the
+`video` group. The desktop app avoids both, since it ships its own runtime.
 
-![Blockstream Green non-default blind PIN oracle warning](docs/images/green_non_default_oracle_warning.png)
+### USB or Bluetooth mode
 
-This can be dismissed by first clicking on "Advanced", then enabling "Don't ask me again for this oracle" and finally clicking on "Allow Non-Default Connection".
+Use the Jade with Blockstream Green as normal. Green warns the first time that a
+non-default blind oracle is in use — click **Advanced**, enable **Don't ask me
+again for this oracle**, then **Allow Non-Default Connection**.
 
-![Blockstream Green non-default blind PIN oracle warning - advanced view](docs/images/green_non_default_oracle_warning_advanced.png)
+![Green non-default oracle warning](docs/images/green_non_default_oracle_warning_advanced.png)
+
+---
+
+## Running from source
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --require-hashes -r requirements.txt
+
+npm ci --ignore-scripts
+node node_modules/electron/install.js
+npm start
+```
+
+To run only the server, without the desktop shell:
+
+```bash
+python3 SimpleJadePinServer.py --no-tls
+```
+
+| Option | Meaning |
+|---|---|
+| `--port N` | Port to listen on (default `4443`) |
+| `--listen ADDR` | Bind address (default `127.0.0.1`) |
+| `--data-dir PATH` | Override the key/PIN directory |
+| `--no-tls` | Serve over HTTP. Safe on loopback, which browsers already treat as a secure context |
+
+`--listen 0.0.0.0` exposes the oracle to your network. Only do that if Green or
+the Jade must reach it from another host, and understand what you are exposing.
+
+### Building installers
+
+```bash
+npm run dist
+```
+
+PyInstaller cannot cross-compile, so each platform must be built on its own
+runner. The release workflow does this on an ephemeral CI matrix.
+
+---
+
+## Security notes
+
+- `private.key` is written `0600`; its directory is `0700`.
+- The web root is served with path-traversal protection; requests resolving
+  outside it are rejected.
+- The desktop shell runs the renderer with `contextIsolation`, `sandbox`, and no
+  Node integration. The preload exposes exactly one method.
+- Camera permission is granted only to the app's own loopback origin; every
+  other permission, including microphone, is denied.
+- `wallycore` — the cryptographic library that ships inside the binary — is
+  installed with pinned SHA-256 hashes, so a substituted PyPI artifact fails the
+  build.
+- npm dependencies are installed from a committed lockfile with
+  `--ignore-scripts`, blocking the lifecycle-script vector used by most npm
+  supply-chain attacks. Electron's binary is verified against its published
+  checksums.
+
+Found a security issue? Email **security@boltadvantage.com**.
+
+---
+
+## Credits
+
+Original implementation by [Filiprogrammer](https://github.com/Filiprogrammer)
+([SimpleJadePinServer](https://github.com/Filiprogrammer/SimpleJadePinServer)),
+whose work made air-gapped QR PIN unlock possible in the first place.
+
+QR generation uses [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator);
+QR scanning uses [html5-qrcode](https://github.com/mebjas/html5-qrcode), both
+vendored locally.
+
+Packaged and maintained by [Bolt Advantage](https://boltadvantage.com).
+
+## License
+
+**The upstream project does not carry a license file**, which means the original
+code is by default "all rights reserved" under copyright. Forking and viewing it
+on GitHub is permitted by GitHub's Terms of Service, but that does not grant a
+right to redistribute — and publishing compiled binaries is redistribution.
+
+This fork therefore does **not** assert a license over the inherited code, and
+no license is claimed here on Filiprogrammer's behalf.
+
+Modifications made in this fork (desktop packaging, offline hardening, camera
+handling, key management, styling) are offered by Bolt Advantage, LLC under the
+MIT license, to the extent they are separable from the original work.
+
+If you are Filiprogrammer: we would be glad to see an explicit license on the
+upstream project, and will comply with whatever you choose.

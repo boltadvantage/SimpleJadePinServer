@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>Oracle QR — Jade PIN Server</title>
+    <link rel="icon" href="assets/icon.png">
+    <link rel="stylesheet" href="assets/bolt.css">
+    <script src="qrcode.js"></script>
+    <script src="oracle-qr.js"></script>
+    <script src="page-init.js"></script>
+</head>
+<body>
+
+<header class="masthead">
+    <img src="assets/bolt_advantage_logo.svg" alt="Bolt Advantage">
+    <span class="divider"></span>
+    <h1>Oracle QR</h1>
+    <span class="spacer"></span>
+    <span class="airgap"><span class="dot"></span>Offline</span>
+</header>
+
+<main>
+    <p class="topline"><a href="index.html">&larr; Back to PIN server</a></p>
+
+    <p class="lede">
+        Generate the QR code that points your Jade at this server.
+    </p>
+
+    <section class="card">
+        <div class="card-head"><h2>Getting to the setting on your Jade</h2></div>
+
+        <ol class="howto">
+            <li>Power the Jade on.</li>
+            <li>
+                As the logo appears, <b>press both buttons at once</b> &mdash; a
+                short press, do not hold. This opens the boot menu.
+                <span class="note">
+                    On some models and firmware a single click of the select
+                    button opens the same menu. If both-buttons does nothing,
+                    power off and try one click as the logo shows.
+                </span>
+            </li>
+            <li>Select <b>Blind Oracle</b>.</li>
+            <li>Select <b>Scan Oracle QR</b>.</li>
+            <li>Generate the code below and scan it with the Jade.</li>
+            <li>Confirm the details shown on the Jade&rsquo;s screen.</li>
+        </ol>
+    </section>
+
+    <div class="alert warn show">
+        <strong>The Jade must be uninitialized to set a new blind oracle.</strong>
+        If your Jade is already set up, applying a new oracle requires a factory
+        reset, which erases the wallet. You will need your recovery phrase to
+        restore it. If you are moving an <em>existing</em> setup to this machine,
+        do not re-scan this code — copy your existing keys across instead (see
+        <a href="keys.html">Keys &amp; backup</a>).
+    </div>
+
+    <section class="card">
+        <div class="card-head">
+            <h2>Server details</h2>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label for="urla">Primary URL (urlA)</label>
+            <input type="text" id="urla" style="width:100%" value="http://127.0.0.1:4443">
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <label for="urlb">Fallback URL (urlB) — optional</label>
+            <input type="text" id="urlb" style="width:100%" placeholder="http://maia:8096">
+        </div>
+
+        <div style="margin-bottom:18px;">
+            <label for="pubkey">Server public key (hex)</label>
+            <input type="text" id="pubkey" style="width:100%"
+                   value="{STATIC_SERVER_PUBLIC_KEY}">
+        </div>
+
+        <div class="btn-row">
+            <button id="btn_generate">Generate QR code</button>
+        </div>
+
+        <div id="generated_qrcode" class="qr-display"></div>
+    </section>
+
+    <div class="alert show" style="border-color:var(--line); background:var(--navy); color:var(--muted);">
+        <strong>If you only ever use the Jade in QR mode, the URL does not matter.</strong>
+        The public key is the only field the Jade relies on. The URL must be
+        correct and reachable only for firmware upgrades over USB or Bluetooth.
+    </div>
+</main>
+
+<footer>
+    <a href="https://boltadvantage.com">
+        <img src="assets/bolt_advantage_logo.svg" alt="Bolt Advantage" class="logo">
+    </a>
+    <p><a href="https://boltadvantage.com">boltadvantage.com</a></p>
+    <p>&copy; 2026 Bolt Advantage, LLC.</p>
+    <div class="credit">
+        <p>
+            Forked from <a href="https://github.com/Filiprogrammer/SimpleJadePinServer">SimpleJadePinServer</a>
+            by <a href="https://github.com/Filiprogrammer">Filiprogrammer</a>.
+            Not affiliated with or endorsed by Blockstream.
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>

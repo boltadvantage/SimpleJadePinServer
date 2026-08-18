@@ -1,0 +1,134 @@
+{
+  "name": "bolt-jade-pin-server",
+  "productName": "Jade PIN Server",
+  "version": "1.0.0",
+  "description": "Self-hosted, fully offline blind PIN oracle for the Blockstream Jade hardware wallet.",
+  "homepage": "https://boltadvantage.com",
+  "license": "MIT",
+  "author": {
+    "name": "Bolt Advantage, LLC",
+    "email": "security@boltadvantage.com",
+    "url": "https://boltadvantage.com"
+  },
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:server": "pyinstaller --clean --noconfirm build/server.spec",
+    "dist": "npm run build:server && electron-builder --publish never",
+    "dist:linux": "npm run build:server && electron-builder --linux --publish never",
+    "dist:mac": "npm run build:server && electron-builder --mac --publish never",
+    "dist:win": "npm run build:server && electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "electron": "33.4.11",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.boltadvantage.jadepinserver",
+    "productName": "Jade PIN Server",
+    "copyright": "Copyright \u00a9 2026 Bolt Advantage, LLC",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "!**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "dist/server",
+        "to": "server"
+      }
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.icns",
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSCameraUsageDescription": "Jade PIN Server uses your camera only to read the QR codes shown on your Jade device. Images are processed entirely on this machine and never leave it."
+      }
+    },
+    "dmg": {
+      "title": "Jade PIN Server",
+      "contents": [
+        {
+          "x": 140,
+          "y": 200,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Jade PIN Server"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Utility",
+      "icon": "build/icon.png",
+      "synopsis": "Offline blind PIN oracle for Blockstream Jade",
+      "desktop": {
+        "entry": {
+          "Name": "Jade PIN Server",
+          "Categories": "Utility;Security;"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+# Runtime dependency — this code ships INSIDE the released binary.
+#
+# Every published artifact for this version is pinned by SHA-256. pip refuses
+# to install if a hash does not match, which blocks a tampered or substituted
+# PyPI artifact. Install with:
+#
+#   pip install --require-hashes -r requirements.txt
+#
+wallycore==1.5.6 \
+    --hash=sha256:d69f497648aab5ea40ccf4a230ba74b67fcbcb77d21e20bb83aeaff88546eef7 \
+    --hash=sha256:22b2d35148712f9aeec12df152df61001d58221c2d5ed386e8600d0c8741ff36 \
+    --hash=sha256:06e792f9f1d25c0fc712fbe55ec7a0c6eea0d2adb93d4896a99d1cfe84007004 \
+    --hash=sha256:2218c2f03e94880bb8275a92afb1dfe9f36db4cb0b5e46563ac4d189f7f4265a \
+    --hash=sha256:a475354306d399385bc6b09d469d271d033d7eaf47347fb840959a65beebd399 \
+    --hash=sha256:5da259f60f32fd43dc65b201fcc8dd653d41fabfea0b6b3f34ef98a46f02380b \
+    --hash=sha256:0ede49015381ada66fa5523461ec54d3ca8bfe0c119ef289dfb634c95a0781fc \
+    --hash=sha256:1bcad25770c03066a5a6796f4475c662f1dcc931e5a3e20288dd46c6e8693a22 \
+    --hash=sha256:f429742a72f4264dc6040a65e96c2bf46c96c3662ba87ec5798886fa94cb2e9c \
+    --hash=sha256:da5cad9e53105702925e5408de85c52f52e383a6e728fd95474d73bcf5e9c5ea \
+    --hash=sha256:d30263dd0a47d06602d1cf80f9f655f72fcff4878077379f4ddd62ab9e675037 \
+    --hash=sha256:94a630c61f99a14a16dab134e54f37be9127f501858f4c1e1b0aa9b2f6b61406 \
+    --hash=sha256:d6112264a688c94fc9e0a2d8988ffa9b1432624a0709e8a6bdae95198f150f65 \
+    --hash=sha256:a4269199b8eee298ef95621ea21b3c9ef7be406bd1459d0e2f51206a1a0ac422 \
+    --hash=sha256:d7aa5e3f6347a4b34cdb8385ec88aa0201afb3a2c6ee313e1d3b4c587becaead \
+    --hash=sha256:6ad462b536d94af295424e5155278b512eb232cc4b7a2507766435ef38a9f8e1 \
+    --hash=sha256:3c5c6effa946c35dfb73489d60613da6bb10a13bdfc0a5bd1f9a943b1c0dca7f \
+    --hash=sha256:673364adf7864d9e7f70bc41824a8230d60316256c664ee099473c96712dabb3 \
+    --hash=sha256:5ba0222cdddf1c284c45a768eb33e615845bbb2b4472851a969b279ec145c098 \
+    --hash=sha256:8763e83037f170c57faeb795da85645ec2cbad64e7f68710a178cf5edad54cb9 \
+    --hash=sha256:ad299a6ee091b9c1fd496d765d8c249af731069cd3cc8795a6a000cd300c51a6 \
+    --hash=sha256:b0dfee3b5fb977d8837a856fa3f853b6d6a99c9c8f5e592aaf56866c7087d7d1 \
+    --hash=sha256:ea8ea4e6b13a4cb8754f91f0bbee46dab8e9ef89197c8167c4ff6fa61edbf945 \
+    --hash=sha256:b2b284fce77058dae8ed524f19c93e1bc3739fdadf0ca32dc9fc5730a17d3a16 \
+    --hash=sha256:718835debd32a9d07cbb55c7d04756575cb49f4fb8ac1bf16823747e66bf7cfe \
+    --hash=sha256:708351312216f1f36a77591e48309ea0c89d7cc2dd1f415bd6862a6562da278c \
+    --hash=sha256:1f7753af3fb98fb2e0f433ee5094a79eb1b6b1e402dd9021e7cbf998a1ab30db \
+    --hash=sha256:30190ab70803484f569f3341337730134d291dd01a4e4b07028b94c7a42771d9

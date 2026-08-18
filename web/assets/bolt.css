@@ -1,0 +1,410 @@
+/* Bolt Advantage — Jade PIN Server
+   Fully local. No remote fonts, no remote anything. System font stack only. */
+
+:root {
+  --crimson: #C41E3A;
+  --crimson-lt: #E8687E;
+  --crimson-dk: #9B1530;
+  --navy: #172030;
+  --navy-dk: #0d1520;
+  --navy-md: #1c2b40;
+  --ink: #f8fafc;
+  --muted: rgba(255, 255, 255, 0.55);
+  --faint: rgba(255, 255, 255, 0.38);
+  --line: rgba(255, 255, 255, 0.08);
+  --ok: #2ecc71;
+  --warn: #f0a020;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--navy-dk);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.masthead {
+  background: var(--navy);
+  border-bottom: 1px solid var(--line);
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.masthead img { height: 30px; width: auto; }
+
+.masthead .divider {
+  width: 1px;
+  height: 26px;
+  background: var(--line);
+}
+
+.masthead h1 {
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+.masthead .spacer { flex: 1; }
+
+/* Offline indicator — reassures the user nothing is phoning home */
+.airgap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--ok);
+  border: 1px solid rgba(46, 204, 113, 0.35);
+  background: rgba(46, 204, 113, 0.08);
+  border-radius: 999px;
+  padding: 5px 12px;
+}
+
+.airgap .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ok);
+}
+
+/* ── Layout ─────────────────────────────────────────── */
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+}
+
+.lede {
+  color: var(--muted);
+  margin: 0 0 28px;
+  font-size: 14.5px;
+}
+
+.card {
+  background: var(--navy);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.step-num {
+  flex: none;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--crimson);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.card h2 {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.card .sub {
+  color: var(--faint);
+  font-size: 13px;
+  margin: 0 0 18px 42px;
+}
+
+/* ── Buttons ────────────────────────────────────────── */
+button {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--crimson);
+  border: none;
+  border-radius: 8px;
+  padding: 11px 20px;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+button:hover:not(:disabled) { background: var(--crimson-dk); }
+
+button:disabled {
+  background: var(--navy-md);
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+button.ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 500;
+  padding: 9px 16px;
+}
+
+button.ghost:hover:not(:disabled) {
+  background: var(--navy-md);
+  color: var(--ink);
+}
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Form controls ──────────────────────────────────── */
+select, input[type="text"] {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--navy-dk);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  max-width: 100%;
+}
+
+select:focus, input[type="text"]:focus {
+  outline: 2px solid var(--crimson);
+  outline-offset: 1px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--faint);
+  margin-bottom: 6px;
+}
+
+/* ── Data readouts ──────────────────────────────────── */
+.readout {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--navy-dk);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 16px;
+  word-break: break-all;
+  max-height: 130px;
+  overflow-y: auto;
+}
+
+.readout .tag {
+  display: inline-block;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--crimson-lt);
+  margin-bottom: 4px;
+}
+
+/* ── Camera / QR ────────────────────────────────────── */
+#qrreader1 {
+  margin-top: 18px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#qrreader1:not(:empty) { border: 1px solid var(--line); }
+
+#qrreader1 video { width: 100% !important; display: block; }
+
+#qrreader1 img[alt="Info icon"] { display: none; }
+
+.qr-display {
+  margin-top: 18px;
+  text-align: center;
+}
+
+.qr-display:not(:empty) {
+  background: #fff;
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.qr-display img {
+  image-rendering: pixelated;
+  max-width: 100%;
+}
+
+/* ── Status / alerts ────────────────────────────────── */
+.alert {
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 16px;
+  font-size: 13.5px;
+  border: 1px solid;
+  display: none;
+}
+
+.alert.show { display: block; }
+
+.alert.err {
+  color: #ffc9d2;
+  background: rgba(196, 30, 58, 0.12);
+  border-color: rgba(196, 30, 58, 0.45);
+}
+
+.alert.warn {
+  color: #ffe0b0;
+  background: rgba(240, 160, 32, 0.1);
+  border-color: rgba(240, 160, 32, 0.4);
+}
+
+.alert.ok {
+  color: #b6f0cf;
+  background: rgba(46, 204, 113, 0.1);
+  border-color: rgba(46, 204, 113, 0.4);
+}
+
+.alert strong { display: block; margin-bottom: 3px; }
+
+.alert ul { margin: 8px 0 0; padding-left: 18px; }
+
+.alert li { margin-bottom: 4px; }
+
+.alert code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.progress {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 14px;
+}
+
+.progress b { color: var(--crimson-lt); }
+
+/* ── Footer ─────────────────────────────────────────── */
+footer {
+  background: var(--navy-dk);
+  border-top: 1px solid var(--line);
+  padding: 32px 24px;
+  text-align: center;
+}
+
+footer img.logo {
+  height: 26px;
+  width: auto;
+  opacity: 0.5;
+  margin-bottom: 14px;
+}
+
+footer p {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--faint);
+}
+
+footer a { color: var(--muted); text-decoration: none; }
+
+footer a:hover { color: var(--crimson-lt); text-decoration: underline; }
+
+footer .credit {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.topline a { color: var(--muted); font-size: 13px; text-decoration: none; }
+
+.topline a:hover { color: var(--crimson-lt); }
+
+/* ── Step guidance ──────────────────────────────────── */
+.once {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--faint);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 10px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.howto-lead {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--faint);
+  margin: 18px 0 8px;
+}
+
+ol.howto {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+ol.howto li { margin-bottom: 9px; }
+
+ol.howto b { color: var(--ink); }
+
+ol.howto .note {
+  display: block;
+  margin-top: 5px;
+  font-size: 12.5px;
+  color: var(--faint);
+  border-left: 2px solid var(--line);
+  padding-left: 10px;
+}
+
+/* Links inside alerts must inherit the alert's contrast, not the footer's */
+.alert a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 600;
+}
+
+.alert a:hover { opacity: 0.75; }
