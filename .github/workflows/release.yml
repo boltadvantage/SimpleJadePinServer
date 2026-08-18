@@ -104,11 +104,6 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-22.04
-    # Job-level env: a step's own `env:` block is NOT visible to that step's
-    # `if:` expression, so the signing condition must read a job-level value.
-    env:
-      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
     permissions:
       contents: write
       id-token: write      # required for build provenance
@@ -125,25 +120,20 @@ jobs:
           find staging -type f -exec cp {} dist/ \;
           ls -la dist
 
-      # Integrity manifest. Proves a download matches what was published;
-      # it does NOT prove the binary matches source (see README).
+      # Integrity manifest. Proves a download matches what was published; it
+      # does NOT prove the binary matches source (see README).
+      #
+      # Deliberately unsigned here: the release signing key is never given to
+      # CI. A key stored in Actions secrets is reachable by any third-party
+      # action in this workflow and by anyone with repo admin, which would
+      # undermine the very thing the signature is meant to attest. The release
+      # is published as a draft so SHA256SUMS.asc can be attached from an
+      # offline machine before it goes public - see scripts/sign-release.sh.
       - name: Generate SHA256SUMS
         run: |
           cd dist
           sha256sum * > SHA256SUMS
           cat SHA256SUMS
-
-      # Optional authorship signature. Skipped cleanly when no key is set, so
-      # the workflow still succeeds before signing is configured.
-      - name: Sign SHA256SUMS
-        if: env.GPG_PRIVATE_KEY != ''
-        run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-          cd dist
-          gpg --batch --yes --pinentry-mode loopback \
-              --passphrase "$GPG_PASSPHRASE" \
-              --armor --detach-sign --output SHA256SUMS.asc SHA256SUMS
-          gpg --verify SHA256SUMS.asc SHA256SUMS
 
       # Ties each binary to this exact commit and workflow run. No key
       # management, and it leaks nothing personal.
@@ -171,7 +161,10 @@ jobs:
             sha256sum -c SHA256SUMS --ignore-missing
             ```
 
-            If `SHA256SUMS.asc` is present, verify authorship first:
+            Verify authorship first. Import the Bolt Advantage release key from
+            https://boltadvantage.com/pgp.asc (published independently of this
+            repository, so it cannot be swapped by anyone who could swap these
+            files), then:
 
             ```bash
             gpg --verify SHA256SUMS.asc SHA256SUMS

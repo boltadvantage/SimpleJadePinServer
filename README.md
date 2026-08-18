@@ -51,11 +51,23 @@ Each release ships a `SHA256SUMS` file.
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
-If `SHA256SUMS.asc` is present, check authorship before trusting the sums:
+Checksums alone only prove you received what was published — anyone able to
+replace a binary could replace the checksum file beside it. The signature is
+what proves the release came from us.
+
+Import the release key, then verify:
 
 ```bash
+curl -sO https://boltadvantage.com/pgp.asc && gpg --import pgp.asc
 gpg --verify SHA256SUMS.asc SHA256SUMS
 ```
+
+The key is published on boltadvantage.com rather than only in this repository,
+so it cannot be swapped by anyone who could swap these release files. Check the
+fingerprint against the one listed there.
+
+The signing key is never held by CI — releases are signed from an offline
+machine, so a compromised workflow or third-party action cannot reach it.
 
 You can also verify that a binary came from this repository's build workflow:
 
@@ -285,6 +297,12 @@ runner. The release workflow does this on an ephemeral CI matrix.
   `--ignore-scripts`, blocking the lifecycle-script vector used by most npm
   supply-chain attacks. Electron's binary is verified against its published
   checksums.
+- The release signing key is never stored in CI. Secrets in a build workflow
+  are reachable by every third-party action it runs and by anyone with repo
+  admin, so a key held there could not honestly attest to anything. Releases
+  are published as drafts and signed from an offline machine
+  (`scripts/sign-release.sh`), which re-derives the checksums from the actual
+  artifacts and refuses to sign a manifest that does not match them.
 
 Found a security issue? Email **security@boltadvantage.com**.
 
