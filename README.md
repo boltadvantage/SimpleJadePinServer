@@ -4,7 +4,9 @@ A self-hosted blind PIN oracle for the [Blockstream Jade](https://blockstream.co
 packaged as a desktop application that runs entirely offline.
 
 Supports **QR PIN Unlock**, which makes it possible to use a Jade in a fully
-air-gapped way — no USB, no Bluetooth, no network.
+air-gapped way — no USB, no Bluetooth, no network. USB and Bluetooth unlock via
+Blockstream Green are equally supported, including configuring the oracle over
+a USB cable when a camera is not an option.
 
 > Forked from [SimpleJadePinServer](https://github.com/Filiprogrammer/SimpleJadePinServer)
 > by [Filiprogrammer](https://github.com/Filiprogrammer). The blind-oracle
@@ -228,9 +230,32 @@ Scan the generated code, then confirm the details on screen.
 > To migrate an existing setup, copy your keys across instead — see above.
 
 If you only ever use the Jade in QR mode, the URL does not matter; the public key
-is the only field that counts. The URL must be correct and reachable only for
-firmware upgrades over USB or Bluetooth. (The Jade Plus can upgrade firmware
-air-gapped via USB storage, so this does not apply to it.)
+is the only field that counts. The URL must be correct and reachable for
+USB/Bluetooth unlock and for firmware upgrades over USB or Bluetooth. (The Jade
+Plus can upgrade firmware air-gapped via USB storage, so the firmware part does
+not apply to it.)
+
+### Alternative: point the Jade at the server over USB
+
+If the camera cannot scan the Oracle QR — an old or awkward webcam, or a machine
+with no camera at all — configure the oracle over a USB cable instead, using
+Blockstream's own script. This does the same job as scanning the QR code.
+
+```bash
+git clone https://github.com/Blockstream/Jade
+cd Jade
+python3 set_jade_pinserver.py \
+    --serialport <YOUR_JADE_SERIAL_PORT> \
+    --set-pubkey /path/to/server_keys/public.key \
+    --set-url http://127.0.0.1:4443
+```
+
+`public.key` lives in the data directory shown on the **Keys & backup** page.
+The serial port is typically `/dev/ttyUSB0` or `/dev/ttyACM0` on Linux and
+something like `/dev/cu.usbserial-*` on macOS.
+
+Unlike the QR route, the URL genuinely matters here: pass the address the server
+actually listens on, and keep it reachable from wherever Blockstream Green runs.
 
 ### QR mode
 
@@ -257,9 +282,32 @@ interface connected (`snap connect firefox:camera`), or your user is not in the
 
 ### USB or Bluetooth mode
 
-Use the Jade with Blockstream Green as normal. Green warns the first time that a
-non-default blind oracle is in use — click **Advanced**, enable **Don't ask me
-again for this oracle**, then **Allow Non-Default Connection**.
+A fully supported alternative to QR mode, and the practical choice when the
+camera is unavailable.
+
+Leave this application running — it must be running for the unlock to succeed,
+because Green talks to it over HTTP. Then use the Jade with Blockstream Green as
+normal. Green warns the first time a non-default blind oracle is used: click
+**Advanced**, enable **Don't ask me again for this oracle**, then **Allow
+Non-Default Connection**.
+
+**The port matters in this mode.** Green connects to the URL stored on your Jade,
+normally `http://127.0.0.1:4443`. The app binds `4443` whenever it is free; if
+something else holds that port it falls back to a random one, and USB/BLE unlock
+will then fail. The **Keys & backup** page shows the address in use and warns
+when it is not the standard port. QR mode is unaffected either way.
+
+**If Green runs on another device** — a phone over Bluetooth, or a second
+computer — the server must be reachable across your network, which the desktop
+app deliberately does not do. Run the server directly instead:
+
+```bash
+python3 SimpleJadePinServer.py --no-tls --listen 0.0.0.0 --port 4443
+```
+
+Understand what that exposes: anyone who can reach that port can submit PIN
+attempts against your stored records. Use it on a trusted network only, and
+prefer keeping Green on the same machine where loopback suffices.
 
 ![Green non-default oracle warning](docs/images/green_non_default_oracle_warning_advanced.png)
 

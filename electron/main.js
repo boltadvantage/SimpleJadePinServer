@@ -90,17 +90,37 @@ function serverBinaryPath() {
   return { cmd: py, args: [script], frozen: false };
 }
 
-/* Ask the OS for a free port so two instances never collide. */
-function findFreePort() {
-  return new Promise((resolve, reject) => {
+/* The Jade stores a pin server URL when its blind oracle is configured, and in
+ * USB/BLE mode Blockstream Green POSTs to exactly that URL. A randomly chosen
+ * port would therefore break USB/BLE unlock on every launch, so the standard
+ * port is used whenever it is free and an ephemeral one only as a fallback.
+ */
+const DEFAULT_PORT = 4443;
+
+function tryPort(port) {
+  return new Promise((resolve) => {
     const srv = net.createServer();
     srv.unref();
-    srv.on("error", reject);
-    srv.listen(0, "127.0.0.1", () => {
-      const port = srv.address().port;
-      srv.close(() => resolve(port));
+    srv.on("error", () => resolve(null));
+    srv.listen(port, "127.0.0.1", () => {
+      const chosen = srv.address().port;
+      srv.close(() => resolve(chosen));
     });
   });
+}
+
+async function findPort() {
+  const preferred = await tryPort(DEFAULT_PORT);
+  if (preferred) return preferred;
+
+  console.warn(
+    `[port] ${DEFAULT_PORT} is in use; falling back to an ephemeral port. ` +
+    "USB and Bluetooth unlock will not work until the app can bind " +
+    `${DEFAULT_PORT}, because Green connects to the URL stored on the Jade.`
+  );
+  const fallback = await tryPort(0);
+  if (fallback) return fallback;
+  throw new Error("Could not bind any local port.");
 }
 
 /* ── Start / supervise the sidecar ────────────────────────────────── */
@@ -108,7 +128,7 @@ function startServer() {
   return new Promise(async (resolve, reject) => {
     let port;
     try {
-      port = await findFreePort();
+      port = await findPort();
     } catch (e) {
       return reject(new Error("Could not allocate a local port: " + e.message));
     }

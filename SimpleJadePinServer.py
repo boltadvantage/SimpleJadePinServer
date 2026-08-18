@@ -53,6 +53,8 @@ MIME_TYPES = {
 
 KEYS_WERE_GENERATED = False
 MIGRATED_FROM = None
+LISTEN_ADDR = "127.0.0.1"
+LISTEN_PORT = 4443
 
 tls_cert_path = os.path.join(DATA_DIR, "server.pem")
 server_keys_path = os.path.join(DATA_DIR, "server_keys")
@@ -71,6 +73,19 @@ class GracefulExitHandler:
 
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
+        try:
+            self._handle_post()
+        except Exception as exc:
+            # Upstream asserted on malformed payloads, which raised through the
+            # handler and dropped the connection with no response at all.
+            print(f"Bad request on {self.path}: {type(exc).__name__}: {exc}")
+            body = b'{"error":"bad request"}'
+            try:
+                self._send(400, "application/json", body)
+            except Exception:
+                pass
+
+    def _handle_post(self):
         content_len = int(self.headers.get('Content-length', '0'))
         post_body = self.rfile.read(content_len)
         try:
@@ -249,6 +264,8 @@ class MyServer(BaseHTTPRequestHandler):
                 pin_files = []
 
             body = json.dumps({
+                "listen": LISTEN_ADDR,
+                "port": LISTEN_PORT,
                 "data_dir": DATA_DIR,
                 "server_keys_dir": server_keys_path,
                 "pins_dir": pins_path,
@@ -457,6 +474,8 @@ if __name__ == "__main__":
     MIGRATED_FROM = migrate_legacy_data(DATA_DIR)
 
     listen_ip = args.listen
+    LISTEN_ADDR = listen_ip
+    LISTEN_PORT = args.port
     server = HTTPServer((listen_ip, args.port), MyServer)
 
     if args.tls:
