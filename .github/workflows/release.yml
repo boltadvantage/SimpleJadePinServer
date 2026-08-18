@@ -120,28 +120,20 @@ jobs:
           find staging -type f -exec cp {} dist/ \;
           ls -la dist
 
-      # Integrity manifest. Proves a download matches what was published;
-      # it does NOT prove the binary matches source (see README).
+      # Integrity manifest. Proves a download matches what was published; it
+      # does NOT prove the binary matches source (see README).
+      #
+      # Deliberately unsigned here: the release signing key is never given to
+      # CI. A key stored in Actions secrets is reachable by any third-party
+      # action in this workflow and by anyone with repo admin, which would
+      # undermine the very thing the signature is meant to attest. The release
+      # is published as a draft so SHA256SUMS.asc can be attached from an
+      # offline machine before it goes public - see scripts/sign-release.sh.
       - name: Generate SHA256SUMS
         run: |
           cd dist
           sha256sum * > SHA256SUMS
           cat SHA256SUMS
-
-      # Optional authorship signature. Skipped cleanly when no key is set, so
-      # the workflow still succeeds before signing is configured.
-      - name: Sign SHA256SUMS
-        if: ${{ env.GPG_PRIVATE_KEY != '' }}
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-          cd dist
-          gpg --batch --yes --pinentry-mode loopback \
-              --passphrase "$GPG_PASSPHRASE" \
-              --armor --detach-sign --output SHA256SUMS.asc SHA256SUMS
-          gpg --verify SHA256SUMS.asc SHA256SUMS
 
       # Ties each binary to this exact commit and workflow run. No key
       # management, and it leaks nothing personal.
@@ -161,17 +153,21 @@ jobs:
           draft: true
           generate_release_notes: true
           body: |
-            ## Verifying your download
+            ## Verify before you install
 
-            Every file below is listed in `SHA256SUMS`.
+            Check the download while it is still just a file. If verification
+            fails, delete it and do not open it.
 
             ```bash
             sha256sum -c SHA256SUMS --ignore-missing
             ```
 
-            If `SHA256SUMS.asc` is present, verify authorship first:
+            Then verify the signature. The signing key is in the repository at
+            `pgp.asc`, fingerprint
+            `00708A0A41FBF393000A37EC3B95AFBC430F990B`:
 
             ```bash
+            gpg --import pgp.asc
             gpg --verify SHA256SUMS.asc SHA256SUMS
             ```
 

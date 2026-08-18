@@ -69,7 +69,8 @@
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
         "NSCameraUsageDescription": "Jade PIN Server uses your camera only to read the QR codes shown on your Jade device. Images are processed entirely on this machine and never leave it."
-      }
+      },
+      "artifactName": "Jade-PIN-Server-${version}-${arch}.${ext}"
     },
     "dmg": {
       "title": "Jade PIN Server",
@@ -109,7 +110,8 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "shortcutName": "Jade PIN Server"
+      "shortcutName": "Jade PIN Server",
+      "artifactName": "Jade-PIN-Server-Setup-${version}.${ext}"
     },
     "linux": {
       "target": [
@@ -128,7 +130,11 @@
           "Name": "Jade PIN Server",
           "Categories": "Utility;Security;"
         }
-      }
+      },
+      "artifactName": "Jade-PIN-Server-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Jade-PIN-Server-${version}-portable.${ext}"
     }
   }
 }

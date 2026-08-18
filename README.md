@@ -45,30 +45,58 @@ xattr -dr com.apple.quarantine "/Applications/Jade PIN Server.app"
 
 ## Verifying your download
 
-Each release ships a `SHA256SUMS` file.
+Check your download **before you install it**. The file is just a file until you
+open it — if verification fails, delete it and do not run it.
+
+### 1. Check the checksum
+
+Download `SHA256SUMS` from the same release page, put it beside the installer,
+then:
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
-If `SHA256SUMS.asc` is present, check authorship before trusting the sums:
+On macOS use `shasum -a 256 -c SHA256SUMS --ignore-missing`. You want to see
+`OK` next to your file. Anything else means do not open it.
+
+### 2. Check the signature
+
+A checksum on its own only shows your file matches a list — and anyone who could
+replace the installer could replace that list too. The signature is what proves
+the release came from us.
+
+The signing key is in this repository at [`pgp.asc`](pgp.asc), with fingerprint:
+
+```
+00708A0A41FBF393000A37EC3B95AFBC430F990B
+```
 
 ```bash
+gpg --import pgp.asc
 gpg --verify SHA256SUMS.asc SHA256SUMS
 ```
 
-You can also verify that a binary came from this repository's build workflow:
+Look for `Good signature from "Bolt Advantage <security@boltadvantage.com>"` and
+confirm the fingerprint matches the one above. A warning that the key is not
+certified is normal — it just means you have not personally signed our key.
+
+### 3. Optionally, check build provenance
 
 ```bash
 gh attestation verify <file> --repo boltadvantage/SimpleJadePinServer
 ```
 
-**What these checks do and do not prove.** They prove you received the file that
-was published, and that it was produced by this workflow from a specific commit.
-They do **not** prove the binary corresponds byte-for-byte to the source in this
-repository — Electron and PyInstaller builds are not reproducible, so an
-independent rebuild will not produce an identical file. Anyone requiring that
-guarantee should build from source and read the code.
+This ties the binary to the exact commit and workflow run that produced it.
+
+**What these checks do and do not prove.** They prove you received the file we
+published, from us, built from a specific commit. They do **not** prove the
+binary corresponds byte-for-byte to the source here — Electron and PyInstaller
+builds are not reproducible, so an independent rebuild will not produce an
+identical file. If you need that guarantee, build from source and read the code.
+
+The signing key is never held by CI. Releases are signed from an offline
+machine, so a compromised workflow or third-party action cannot reach it.
 
 ---
 
@@ -285,6 +313,18 @@ runner. The release workflow does this on an ephemeral CI matrix.
   `--ignore-scripts`, blocking the lifecycle-script vector used by most npm
   supply-chain attacks. Electron's binary is verified against its published
   checksums.
+- The release signing key is never stored in CI. Secrets in a build workflow
+  are reachable by every third-party action it runs and by anyone with repo
+  admin, so a key held there could not honestly attest to anything. Releases
+  are published as drafts and signed from an offline machine
+  (`scripts/sign-release.sh`), which re-derives the checksums from the actual
+  artifacts and refuses to sign a manifest that does not match them.
+- Note the residual limit of publishing the key here: an attacker who took over
+  this GitHub account could replace the binaries, the checksums and `pgp.asc`
+  together. Signature verification defends against a tampered download or a
+  hostile mirror, not against a compromise of the account itself. Recording the
+  fingerprint somewhere you control, the first time you verify a release, is
+  what closes that gap.
 
 Found a security issue? Email **security@boltadvantage.com**.
 
@@ -315,6 +355,8 @@ no license is claimed here on Filiprogrammer's behalf.
 Modifications made in this fork (desktop packaging, offline hardening, camera
 handling, key management, styling) are offered by Bolt Advantage, LLC under the
 MIT license, to the extent they are separable from the original work.
+
+See [LICENSE](LICENSE) for the full text.
 
 If you are Filiprogrammer: we would be glad to see an explicit license on the
 upstream project, and will comply with whatever you choose.
