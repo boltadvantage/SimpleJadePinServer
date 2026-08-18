@@ -24,7 +24,9 @@ jobs:
           - os: macos-14
             name: mac-arm64
             artifact: "*.dmg"
-          - os: macos-13
+          # macos-13 was the last Intel image and has been retired; jobs
+          # targeting it queue forever without ever being assigned a runner.
+          - os: macos-15-intel
             name: mac-x64
             artifact: "*.dmg"
           - os: windows-2022
