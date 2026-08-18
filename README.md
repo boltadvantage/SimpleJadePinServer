@@ -20,9 +20,13 @@ Grab the installer for your system from the [Releases page](../../releases):
 
 | System | File |
 |---|---|
-| Linux (x86_64) | `Jade-PIN-Server-*-x64.AppImage` |
+| Linux (x86_64) | `Jade-PIN-Server-*-x86_64.AppImage` |
 | macOS (Apple Silicon) | `Jade-PIN-Server-*-arm64.dmg` |
 | Windows (x86_64) | `Jade-PIN-Server-Setup-*.exe` |
+
+Two alternatives are also published: `Jade-PIN-Server-*-portable.exe` runs on
+Windows without installing, and `Jade-PIN-Server-*-arm64.zip` is the macOS app
+without the disk image wrapper.
 
 **Intel Macs are not covered by a prebuilt installer.** The bundled PIN server
 is frozen with PyInstaller, which cannot cross-compile, so an Intel build needs
