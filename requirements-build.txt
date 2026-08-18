@@ -1,0 +1,12 @@
+# Build-time only — PyInstaller does not ship inside the released binary.
+#
+# Pinned to an exact version so a malicious patch release cannot slide in.
+# Deliberately NOT hash-pinned: PyInstaller's transitive tree differs per
+# platform (pefile on Windows, macholib on macOS), so a single hash set cannot
+# be satisfied on all three release runners.
+#
+# The integrity guarantee that matters is on the OUTPUT, not this tool:
+# releases are built on ephemeral CI runners, published with SHA256SUMS, and
+# carry GitHub build provenance tying each artifact to a specific commit.
+
+pyinstaller==6.22.2

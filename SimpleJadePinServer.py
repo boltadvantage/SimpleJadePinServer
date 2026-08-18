@@ -11,10 +11,52 @@ import signal
 import ssl
 import sys
 import json
+import shutil
 
-tls_cert_path = "key_data/server.pem"
-server_keys_path = "key_data/server_keys"
-pins_path = "key_data/pins"
+def _app_dir():
+    """Directory holding bundled read-only assets (handles PyInstaller onefile)."""
+    if getattr(sys, "frozen", False):
+        return getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _data_dir():
+    """Per-user writable dir for keys and pins - survives app updates."""
+    env = os.environ.get("JADE_PIN_SERVER_DATA")
+    if env:
+        return env
+    if sys.platform == "darwin":
+        base = os.path.expanduser("~/Library/Application Support/BoltJadePinServer")
+    elif os.name == "nt":
+        base = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")),
+                            "BoltJadePinServer")
+    else:
+        base = os.path.join(os.environ.get("XDG_DATA_HOME",
+                            os.path.expanduser("~/.local/share")), "BoltJadePinServer")
+    return base
+
+
+APP_DIR = _app_dir()
+WEB_ROOT = os.path.join(APP_DIR, "web")
+DATA_DIR = _data_dir()
+
+MIME_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+    ".woff2": "font/woff2",
+    ".json": "application/json",
+}
+
+KEYS_WERE_GENERATED = False
+MIGRATED_FROM = None
+
+tls_cert_path = os.path.join(DATA_DIR, "server.pem")
+server_keys_path = os.path.join(DATA_DIR, "server_keys")
+pins_path = os.path.join(DATA_DIR, "pins")
 
 class GracefulExitHandler:
     def __init__(self, server):
@@ -143,7 +185,7 @@ class MyServer(BaseHTTPRequestHandler):
                     print("Wrong pin (" + str(counter + 1) + ". attempt)")
 
                     if counter >= 2:
-                        os.remove(pins_path + "/" + bytes2hex(pin_pubkey_hash) + ".pin")
+                        os.remove(os.path.join(pins_path, bytes2hex(pin_pubkey_hash) + ".pin"))
                         print("Too many wrong attempts")
                     else:
                         save_pin_fields(pin_pubkey_hash, saved_hash_pin_secret, saved_key, pin_pubkey, counter + 1, replay_counter)
@@ -166,37 +208,79 @@ class MyServer(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(bytes("<html><head><title>Not found</title></head><body>Not found</body></html>", "utf-8"))
 
+    def _send(self, code, ctype, body, extra_headers=None):
+        self.send_response(code)
+        self.send_header("Content-type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        # Hard local-only policy: no external origins may ever be contacted.
+        self.send_header("Content-Security-Policy",
+                         "default-src 'self' 'unsafe-inline' data: blob:; "
+                         "media-src 'self' blob: mediastream:; "
+                         "connect-src 'self'; img-src 'self' data: blob:; "
+                         "font-src 'self' data:; object-src 'none'; base-uri 'none'; "
+                         "form-action 'none'; frame-ancestors 'none'")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", "no-store")
+        for k, v in (extra_headers or {}).items():
+            self.send_header(k, v)
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, fmt, *a):
+        pass
+
     def do_GET(self):
         request = urllib.parse.urlparse(self.path)
+        rel = urllib.parse.unquote(request.path).lstrip("/")
 
-        if request.path == "/qrcode.js":
-            self.send_response(200)
-            self.send_header("Content-type", "text/javascript")
-            self.end_headers()
+        # Local status for the Keys & backup page. Exposes only the PUBLIC key
+        # and paths - never the private key or pin contents.
+        if rel == "status":
+            try:
+                pin_files = [f for f in os.listdir(pins_path) if f.endswith(".pin")]
+            except FileNotFoundError:
+                pin_files = []
 
-            with open("qrcode.js", "r") as file:
-                self.wfile.write(bytes(file.read(), "utf-8"))
-        elif request.path == "/":
-            self.send_response(200)
-            self.send_header("Content-type", "text/html")
-            self.end_headers()
+            body = json.dumps({
+                "data_dir": DATA_DIR,
+                "server_keys_dir": server_keys_path,
+                "pins_dir": pins_path,
+                "public_key": bytes2hex(STATIC_SERVER_PUBLIC_KEY),
+                "pin_records": len(pin_files),
+                "keys_created_this_run": KEYS_WERE_GENERATED,
+                "migrated_from": MIGRATED_FROM,
+            }).encode()
+            self._send(200, "application/json", body)
+            return
 
-            with open("index.html", "r") as file:
-                self.wfile.write(bytes(file.read(), "utf-8"))
-        elif request.path == "/oracle_qr.html":
-            self.send_response(200)
-            self.send_header("Content-type", "text/html")
-            self.end_headers()
+        if rel == "":
+            rel = "index.html"
 
-            with open("oracle_qr.html", "r") as file:
-                file_contents = file.read()
-                file_contents = file_contents.replace("{STATIC_SERVER_PUBLIC_KEY}", bytes2hex(STATIC_SERVER_PUBLIC_KEY))
-                self.wfile.write(bytes(file_contents, "utf-8"))
-        else:
-            self.send_response(404)
-            self.send_header("Content-type", "text/html")
-            self.end_headers()
-            self.wfile.write(bytes("<html><head><title>Not found</title></head><body>Not found</body></html>", "utf-8"))
+        # Resolve inside WEB_ROOT only - blocks ../ traversal and symlink escapes.
+        web_root = os.path.realpath(WEB_ROOT)
+        target = os.path.realpath(os.path.join(web_root, rel))
+
+        if target != web_root and not target.startswith(web_root + os.sep):
+            self._send(403, "text/plain; charset=utf-8", b"Forbidden")
+            return
+
+        if not os.path.isfile(target):
+            self._send(404, "text/plain; charset=utf-8", b"Not found")
+            return
+
+        ctype = MIME_TYPES.get(os.path.splitext(target)[1].lower(),
+                               "application/octet-stream")
+
+        with open(target, "rb") as f:
+            body = f.read()
+
+        # Only the oracle QR page needs server-side substitution.
+        if rel == "oracle_qr.html":
+            body = body.replace(b"{STATIC_SERVER_PUBLIC_KEY}",
+                                bytes2hex(STATIC_SERVER_PUBLIC_KEY).encode())
+
+        self._send(200, ctype, body)
 
 def save_pin_fields(pin_pubkey_hash, hash_pin_secret, aes_key, pin_pubkey, counter, replay_counter):
     storage_aes_key = wally.hmac_sha256(STATIC_SERVER_AES_PIN_DATA, pin_pubkey)
@@ -208,13 +292,13 @@ def save_pin_fields(pin_pubkey_hash, hash_pin_secret, aes_key, pin_pubkey, count
     version_bytes = b'\x01'
     hmac_payload = wally.hmac_sha256(pin_auth_key, version_bytes + encrypted)
 
-    os.makedirs(pins_path, exist_ok=True)
+    os.makedirs(pins_path, mode=0o700, exist_ok=True)
 
-    with open(pins_path + "/" + bytes2hex(pin_pubkey_hash) + ".pin", "wb") as f:
+    with open(os.path.join(pins_path, bytes2hex(pin_pubkey_hash) + ".pin"), "wb") as f:
         f.write(version_bytes + hmac_payload + encrypted)
 
 def load_pin_fields(pin_pubkey_hash, pin_pubkey):
-    with open(pins_path + "/" + bytes2hex(pin_pubkey_hash) + ".pin", "rb") as f:
+    with open(os.path.join(pins_path, bytes2hex(pin_pubkey_hash) + ".pin"), "rb") as f:
         data = f.read()
 
     assert len(data) == 129
@@ -263,18 +347,52 @@ def generate_private_key():
 
     return private_key
 
+def migrate_legacy_data(data_dir):
+    """Adopt a pre-existing ./key_data directory from the script-based layout.
+
+    Upstream stored keys in a CWD-relative ./key_data. Silently generating a
+    fresh keypair instead would leave an already-configured Jade unable to
+    unlock, so any legacy directory found next to the app is copied across
+    before key generation runs. The original is left untouched as a backup.
+    """
+    if os.path.isdir(os.path.join(data_dir, "server_keys")):
+        return None  # already have data here; never overwrite it
+
+    for candidate in (os.path.join(os.getcwd(), "key_data"),
+                      os.path.join(APP_DIR, "key_data")):
+        if not os.path.isdir(os.path.join(candidate, "server_keys")):
+            continue
+
+        os.makedirs(data_dir, exist_ok=True)
+        for sub in ("server_keys", "pins"):
+            src_sub = os.path.join(candidate, sub)
+            if os.path.isdir(src_sub):
+                shutil.copytree(src_sub, os.path.join(data_dir, sub),
+                                dirs_exist_ok=True)
+
+        print(f"Migrated existing key data from {candidate}")
+        print(f"  -> {data_dir}  (original left in place as a backup)")
+        return candidate
+
+    return None
+
+
 def get_static_server_key_pair():
-    os.makedirs(server_keys_path, exist_ok=True)
-    private_key_path = server_keys_path + "/private.key"
-    public_key_path = server_keys_path + "/public.key"
+    os.makedirs(server_keys_path, mode=0o700, exist_ok=True)
+    private_key_path = os.path.join(server_keys_path, "private.key")
+    public_key_path = os.path.join(server_keys_path, "public.key")
 
     if os.path.isfile(private_key_path):
         with open(private_key_path, "rb") as f:
             private_key = bytearray(f.read())
     else:
+        global KEYS_WERE_GENERATED
+        KEYS_WERE_GENERATED = True
         private_key = generate_private_key()
 
-        with open(private_key_path, "wb") as f:
+        # Owner-only from the moment it exists.
+        fd = os.open(private_key_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "wb") as f:
             f.write(private_key)
 
     public_key = wally.ec_public_key_from_private_key(private_key)
@@ -285,6 +403,12 @@ def get_static_server_key_pair():
     return private_key, public_key
 
 if __name__ == "__main__":
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(
         description="Simple reimplementation of the blind_pin_server for the Blockstream Jade, "
                     "along with a basic web interface"
@@ -301,9 +425,32 @@ if __name__ == "__main__":
              "to enable webcam access on non-localhost connections. "
              "Enabled by default; use --no-tls to disable."
     )
+    parser.add_argument(
+        "--data-dir",
+        type=str, default=None,
+        help="directory holding server_keys/ and pins/. Defaults to a per-user "
+             "application data directory. Point this at a backup to restore an "
+             "existing setup."
+    )
+    parser.add_argument(
+        "--listen",
+        type=str, default="127.0.0.1",
+        help="address to bind. Defaults to 127.0.0.1 (this machine only). "
+             "Use 0.0.0.0 only if the Jade or Green must reach this server "
+             "across the network."
+    )
     args = parser.parse_args()
 
-    listen_ip = "0.0.0.0"
+    if args.data_dir:
+        DATA_DIR = os.path.abspath(os.path.expanduser(args.data_dir))
+
+    tls_cert_path = os.path.join(DATA_DIR, "server.pem")
+    server_keys_path = os.path.join(DATA_DIR, "server_keys")
+    pins_path = os.path.join(DATA_DIR, "pins")
+
+    MIGRATED_FROM = migrate_legacy_data(DATA_DIR)
+
+    listen_ip = args.listen
     server = HTTPServer((listen_ip, args.port), MyServer)
 
     if args.tls:
@@ -322,9 +469,22 @@ if __name__ == "__main__":
 
     print(f"Server starting on {'https' if args.tls else 'http'}://{listen_ip}:{args.port}")
 
-    global STATIC_SERVER_PRIVATE_KEY, STATIC_SERVER_PUBLIC_KEY, STATIC_SERVER_AES_PIN_DATA
     STATIC_SERVER_PRIVATE_KEY, STATIC_SERVER_PUBLIC_KEY = get_static_server_key_pair()
     STATIC_SERVER_AES_PIN_DATA = wally.hmac_sha256(STATIC_SERVER_PRIVATE_KEY, b'pin_data')
+
+    print(f"Data directory: {DATA_DIR}")
+    print(f"Server public key: {bytes2hex(STATIC_SERVER_PUBLIC_KEY)}")
+
+    if KEYS_WERE_GENERATED:
+        print("")
+        print("  A NEW server keypair was generated.")
+        print("  An already-configured Jade will NOT unlock against this key.")
+        print("  To use an existing Jade, stop the server and restore your")
+        print("  server_keys/ and pins/ directories into the data directory above,")
+        print("  or start with --data-dir pointing at your backup.")
+        print("")
+
+    print(f"READY {'https' if args.tls else 'http'}://{listen_ip}:{args.port}")
 
     GracefulExitHandler(server)
     server.serve_forever()

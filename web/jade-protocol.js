@@ -1,9 +1,3 @@
-<html>
-    <head>
-        <title>SimpleJadePinServer</title>
-        <script src="qrcode.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js" integrity="sha512-r6rDA7W6ZeQhvl8S7yRVQUKVHdexq+GAlNkNNqVC7YyIV+NwqCTJe2hDWCiffTyRNOeGEzRRJ9ifvRm/HCzGYg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-        <script>
             class BufferReader {
                 constructor(buffer) {
                     this.buffer = buffer;
@@ -509,55 +503,6 @@
 
             var bcur1_fragments;
 
-            function scan_pin_request() {
-                bcur1_fragments = null;
-
-                const scanner = new Html5QrcodeScanner('qrreader1', {
-                    fps: 10,
-                    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-                    verbose: true
-                });
-
-                scanner.render(success, error);
-
-                function success(result) {
-                    console.log("QRCode scanned: " + result);
-                    const result_split = result.split('/');
-
-                    if (result_split[0].toLowerCase() == "ur:jade-pin") {
-                        if (result_split.length == 3) {
-                            const seq_split = result_split[1].split('-');
-                            const seq = parseInt(seq_split[0]);
-                            const numberOfFrags = parseInt(seq_split[1]);
-
-                            if (bcur1_fragments == null) {
-                                bcur1_fragments = Array(numberOfFrags).fill(null);
-                            }
-
-                            bcur1_fragments[seq - 1] = result;
-                            var done = true;
-
-                            for (var i = 0; i < numberOfFrags; ++i) {
-                                if (bcur1_fragments[i] == null) {
-                                    done = false;
-                                }
-                            }
-
-                            if (done) {
-                                scanner.clear();
-                                scan_pin_request_done();
-                            }
-                        } else if (result_split.length == 2) {
-                            bcur1_fragments = [result];
-                            scanner.clear();
-                            scan_pin_request_done();
-                        }
-                    }
-                }
-
-                function error(err) {}
-            }
-
             var request_data;
 
             function scan_pin_request_done() {
@@ -644,22 +589,3 @@
                 xhttp.open("POST", "get_pin");
                 xhttp.send('{"data": "' + request_data + '"}');
             }
-        </script>
-    </head>
-    <body>
-        <h1>SimpleJadePinServer</h1>
-        <a href="oracle_qr.html">Oracle QR code</a>
-        <p>
-            <button onclick="scan_pin_request()">Step 1/2 pin request - Jade &rarr; pin server</button>
-            <div id="qrreader1"></div>
-            <span id="pin_request">set/get pin: ?<br>data: ?</span>
-        </p>
-
-        <p>
-            <button id="btn_step2" disabled>Step 2/2 pin reply - pin server &rarr; Jade</button>
-            <br>
-            <span id="pin_response">data: ?</span>
-            <div id="qrcode2"></div>
-        </p>
-    </body>
-</html>

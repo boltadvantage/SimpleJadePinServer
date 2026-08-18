@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>Jade PIN Server — Bolt Advantage</title>
+    <link rel="icon" href="assets/icon.png">
+    <link rel="stylesheet" href="assets/bolt.css">
+    <script src="qrcode.js"></script>
+    <script src="vendor/html5-qrcode.min.js"></script>
+    <script src="jade-protocol.js"></script>
+    <script src="camera.js"></script>
+</head>
+<body>
+
+<header class="masthead">
+    <img src="assets/bolt_advantage_logo.svg" alt="Bolt Advantage">
+    <span class="divider"></span>
+    <h1>Jade PIN Server</h1>
+    <span class="spacer"></span>
+    <span class="airgap"><span class="dot"></span>Offline</span>
+</header>
+
+<main>
+    <p class="lede">
+        A self-hosted blind PIN oracle for the Blockstream Jade. Everything runs
+        on this machine — no network calls leave it.
+    </p>
+
+    <p class="topline">
+        <a href="keys.html">→ Keys &amp; backup</a>
+    </p>
+
+    <!-- ── Step 1: one-time setup ───────────────────────────── -->
+    <section class="card">
+        <div class="card-head">
+            <span class="step-num">1</span>
+            <h2>Point your Jade at this server</h2>
+            <span class="once">One time only</span>
+        </div>
+        <p class="sub">
+            Skip this if your Jade already uses this server &mdash; go straight
+            to Step&nbsp;2.
+        </p>
+
+        <div class="alert warn show">
+            <strong>Only do this on an uninitialized Jade.</strong>
+            Setting a new blind oracle on a Jade that is already set up requires a
+            factory reset, which erases the wallet. Moving an existing Jade to this
+            machine? Restore your keys instead &mdash; see
+            <a href="keys.html">Keys &amp; backup</a>.
+        </div>
+
+        <p class="howto-lead">On the Jade:</p>
+        <ol class="howto">
+            <li>Power the Jade on.</li>
+            <li>
+                As the logo appears, <b>press both buttons at once</b> &mdash; a
+                short press, do not hold. This opens the boot menu.
+                <span class="note">
+                    On some models and firmware a single click of the select
+                    button opens the same menu. If both-buttons does nothing,
+                    power off and try one click as the logo shows.
+                </span>
+            </li>
+            <li>Select <b>Blind Oracle</b>.</li>
+            <li>Select <b>Scan Oracle QR</b>.</li>
+            <li>Open the page below, generate the code, and scan it with the Jade.</li>
+            <li>Confirm the details shown on the Jade&rsquo;s screen.</li>
+        </ol>
+
+        <div class="btn-row" style="margin-top:18px;">
+            <button onclick="location.href='oracle_qr.html'">
+                Open Oracle QR generator →
+            </button>
+        </div>
+    </section>
+
+    <!-- ── Step 2 ───────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-head">
+            <span class="step-num">2</span>
+            <h2>PIN request — Jade to server</h2>
+        </div>
+        <p class="sub">
+            Enter your PIN on the Jade. When it shows <b>Step 1/2</b>, scan the
+            QR codes it displays.
+        </p>
+
+        <div id="cam_picker" style="display:none; margin-bottom:14px;">
+            <label for="cam_select">Camera</label>
+            <select id="cam_select"></select>
+        </div>
+
+        <div class="btn-row">
+            <button id="btn_scan" disabled>Start camera scan</button>
+            <button id="btn_stop" class="ghost" disabled>Stop</button>
+            <button id="btn_recheck" class="ghost">Re-check cameras</button>
+        </div>
+
+        <div id="cam_progress" class="progress"></div>
+        <div id="cam_alert" class="alert"></div>
+        <div id="qrreader1"></div>
+
+        <!-- No-camera fallbacks -->
+        <div style="margin-top:20px; padding-top:18px; border-top:1px solid var(--line);">
+            <label>No camera? Use a fallback</label>
+            <div class="btn-row">
+                <button class="ghost" onclick="document.getElementById('file_input').click()">
+                    Scan from image
+                </button>
+                <button id="btn_manual" class="ghost">Paste UR text</button>
+                <input type="file" id="file_input" accept="image/*" style="display:none">
+            </div>
+
+            <div id="manual_box" style="display:none; margin-top:14px;">
+                <label for="manual_text">
+                    <code>ur:jade-pin/…</code> fragments, separated by spaces or newlines
+                </label>
+                <input type="text" id="manual_text" style="width:100%"
+                       placeholder="ur:jade-pin/1-3/…">
+                <div class="btn-row" style="margin-top:10px;">
+                    <button id="btn_manual_go">Submit</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="readout">
+            <span class="tag">Request</span>
+            <div id="pin_request">set/get pin: ?<br>data: ?</div>
+        </div>
+    </section>
+
+    <!-- ── Step 3 ───────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-head">
+            <span class="step-num">3</span>
+            <h2>PIN reply — server to Jade</h2>
+        </div>
+        <p class="sub">
+            Generate the reply, then scan it from the Jade&rsquo;s
+            <b>Step 2/2</b> screen.
+        </p>
+
+        <div class="btn-row">
+            <button id="btn_step2" disabled>Generate reply QR</button>
+        </div>
+
+        <div id="qrcode2" class="qr-display"></div>
+
+        <div class="readout">
+            <span class="tag">Response</span>
+            <div id="pin_response">data: ?</div>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <a href="https://boltadvantage.com" id="ba_link">
+        <img src="assets/bolt_advantage_logo.svg" alt="Bolt Advantage" class="logo">
+    </a>
+    <p><a href="https://boltadvantage.com" class="ba_link">boltadvantage.com</a></p>
+    <p>&copy; 2026 Bolt Advantage, LLC.</p>
+
+    <div class="credit">
+        <p>
+            Forked from <a href="https://github.com/Filiprogrammer/SimpleJadePinServer"
+            class="ext">SimpleJadePinServer</a> by
+            <a href="https://github.com/Filiprogrammer" class="ext">Filiprogrammer</a>,
+            whose original implementation made air-gapped QR PIN unlock possible.
+            The blind-oracle protocol code here remains substantially theirs.
+        </p>
+        <p style="margin-top:8px;">
+            Not affiliated with or endorsed by Blockstream.
+        </p>
+    </div>
+</footer>
+
+<script>
+    // Links must never open inside this window. In the desktop app the main
+    // process intercepts them and hands them to the system browser; in a plain
+    // browser they open a normal new tab. Either way the app itself stays local.
+    document.querySelectorAll('footer a[href^="https://"]').forEach(function (a) {
+        a.setAttribute("target", "_blank");
+        a.setAttribute("rel", "noopener noreferrer");
+    });
+</script>
+
+</body>
+</html>

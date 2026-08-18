@@ -1,1 +1,22 @@
+# Build output
+build/server/
+dist/
+release/
+node_modules/
+*.spec.bak
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Key material — must never be committed
 key_data/
+*.key
+*.pin
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db

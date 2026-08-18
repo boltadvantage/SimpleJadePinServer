@@ -1,8 +1,3 @@
-<html>
-    <head>
-        <title>Jade pin server QR generator</title>
-        <script src="qrcode.js"></script>
-        <script>
             class BufferWriter {
                 constructor() {
                     this.buffer = new Uint8Array(0);
@@ -304,20 +299,3 @@
                 qr.make();
                 document.getElementById("generated_qrcode").innerHTML = qr.createImgTag(4);
             }
-        </script>
-    </head>
-    <body>
-        <h1>Jade pin server QR generator</h1>
-        <label for="urla">urlA</label>
-        <input type="text" id="urla" placeholder="http://taf3nizjnxuqxlg64t7ldtejs7qyevlwiuno4tjym4dtuhixyzhi27ad.onion:8096" size="64" value="http://127.0.0.1:4443" /><br>
-        <script>
-            document.getElementById("urla").value = window.location.protocol + "//" + window.location.host;
-        </script>
-        <label for="urlb">urlB</label>
-        <input type="text" id="urlb" placeholder="http://maia:8096" size="64" /><br>
-        <label for="pubkey">pubkey (hex)</label>
-        <input type="text" id="pubkey" placeholder="023447839124dc14d6007774399f4dc10ab3596a70c8d75dd9bae9998453784877" size="66" value="{STATIC_SERVER_PUBLIC_KEY}" /><br>
-        <button onclick="generate()">Generate QR code</button>
-        <div id="generated_qrcode"></div>
-    </body>
-</html>
