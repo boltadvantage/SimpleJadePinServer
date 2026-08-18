@@ -1,36 +1,13 @@
-Jade PIN Server
-===============
+MIT License
+
+Copyright (c) 2026 Filiprogrammer
+Copyright (c) 2026 Bolt Advantage, LLC
 
 This project is a fork of SimpleJadePinServer by Filiprogrammer
-(https://github.com/Filiprogrammer/SimpleJadePinServer).
-
-IMPORTANT: TWO DIFFERENT BODIES OF CODE
----------------------------------------
-
-The upstream project does not carry a license file. Under copyright law its
-code is therefore "all rights reserved" by its author. Bolt Advantage, LLC has
-no authority to license that code, and does not attempt to do so here.
-
-1. Inherited code
-   The blind-oracle protocol implementation and the BC-UR/CBOR/QR handling
-   originate with Filiprogrammer and remain their copyright. No license is
-   granted over that work by this file. Anyone wishing to redistribute it
-   should seek permission from the original author.
-
-2. Bolt Advantage modifications
-   Changes made in this fork -- the desktop application shell, packaging and
-   release tooling, offline hardening, camera handling and diagnostics, key
-   management and migration, styling, tests and documentation -- are
-   copyright Bolt Advantage, LLC and are offered under the MIT license set
-   out below, to the extent they are separable from the inherited work.
-
-If the upstream project adopts a license, this file should be revised to
-reflect it.
-
-MIT License (Bolt Advantage modifications only)
------------------------------------------------
-
-Copyright (c) 2026 Bolt Advantage, LLC
+(https://github.com/Filiprogrammer/SimpleJadePinServer), which is licensed
+under the MIT License. The blind-oracle protocol implementation and the
+BC-UR/CBOR/QR handling originate with that project and remain the copyright of
+its author. Modifications made in this fork are copyright Bolt Advantage, LLC.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,13 +27,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Third-party components
-----------------------
+---
 
-qrcode-generator by Kazuhiko Arase -- MIT license (web/qrcode.js)
+Third-party components
+
+qrcode-generator by Kazuhiko Arase -- MIT License (web/qrcode.js)
 html5-qrcode by Minhaz -- Apache License 2.0 (web/vendor/html5-qrcode.min.js)
-Electron -- MIT license
-libwally-core (wallycore) -- BSD-MIT license
+Electron -- MIT License
+libwally-core (wallycore) -- BSD-MIT License
 
 Blockstream and Jade are trademarks of Blockstream Corporation Inc. This
 project is not affiliated with or endorsed by Blockstream.
