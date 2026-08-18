@@ -21,13 +21,11 @@ jobs:
           - os: ubuntu-22.04
             name: linux
             artifact: "*.AppImage"
+          # macOS is Apple Silicon only. PyInstaller cannot cross-compile, so
+          # an Intel build would need an Intel runner; Intel users build from
+          # source instead. See the README.
           - os: macos-14
             name: mac-arm64
-            artifact: "*.dmg"
-          # macos-13 was the last Intel image and has been retired; jobs
-          # targeting it queue forever without ever being assigned a runner.
-          - os: macos-15-intel
-            name: mac-x64
             artifact: "*.dmg"
           - os: windows-2022
             name: windows
@@ -87,6 +85,22 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ""
         run: npx electron-builder --publish never
+
+      # A mismatched sidecar produces an app that launches and then dies, and
+      # would otherwise be published and signed as if it worked.
+      - name: Verify bundled server matches the app architecture (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -e
+          for app in release/mac*/*.app; do
+            shell_arch=$(lipo -archs "$app/Contents/MacOS/Jade PIN Server")
+            srv_arch=$(lipo -archs "$app/Contents/Resources/server/SimpleJadePinServer")
+            echo "$app: shell=$shell_arch server=$srv_arch"
+            if [ "$shell_arch" != "$srv_arch" ]; then
+              echo "ERROR: architecture mismatch - the bundled PIN server cannot run" >&2
+              exit 1
+            fi
+          done
 
       - name: Collect artifacts
         shell: bash

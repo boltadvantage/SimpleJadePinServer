@@ -20,10 +20,17 @@ Grab the installer for your system from the [Releases page](../../releases):
 
 | System | File |
 |---|---|
-| Linux | `Jade-PIN-Server-*.AppImage` |
+| Linux (x86_64) | `Jade-PIN-Server-*-x64.AppImage` |
 | macOS (Apple Silicon) | `Jade-PIN-Server-*-arm64.dmg` |
-| macOS (Intel) | `Jade-PIN-Server-*.dmg` |
-| Windows | `Jade-PIN-Server-Setup-*.exe` |
+| Windows (x86_64) | `Jade-PIN-Server-Setup-*.exe` |
+
+**Intel Macs are not covered by a prebuilt installer.** The bundled PIN server
+is frozen with PyInstaller, which cannot cross-compile, so an Intel build needs
+an Intel machine. The Apple Silicon build will not run on an Intel Mac, and
+Rosetta does not help — it translates Intel code to run on Apple Silicon, not
+the reverse. On an Intel Mac, run from source (see
+[Running from source](#running-from-source)); everything works, it just needs
+Python and Node.
 
 Nothing else is required — no Python, no pip, no Docker, no certificates.
 
