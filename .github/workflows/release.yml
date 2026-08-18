@@ -153,20 +153,21 @@ jobs:
           draft: true
           generate_release_notes: true
           body: |
-            ## Verifying your download
+            ## Verify before you install
 
-            Every file below is listed in `SHA256SUMS`.
+            Check the download while it is still just a file. If verification
+            fails, delete it and do not open it.
 
             ```bash
             sha256sum -c SHA256SUMS --ignore-missing
             ```
 
-            Verify authorship first. Import the Bolt Advantage release key from
-            https://boltadvantage.com/pgp.asc (published independently of this
-            repository, so it cannot be swapped by anyone who could swap these
-            files), then:
+            Then verify the signature. The signing key is in the repository at
+            `pgp.asc`, fingerprint
+            `00708A0A41FBF393000A37EC3B95AFBC430F990B`:
 
             ```bash
+            gpg --import pgp.asc
             gpg --verify SHA256SUMS.asc SHA256SUMS
             ```
 
