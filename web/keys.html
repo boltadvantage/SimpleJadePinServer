@@ -7,6 +7,8 @@
     <title>Keys &amp; backup — Jade PIN Server</title>
     <link rel="icon" href="assets/icon.png">
     <link rel="stylesheet" href="assets/bolt.css">
+    <script src="keys-init.js"></script>
+    <script src="page-init.js"></script>
 </head>
 <body>
 
@@ -203,44 +205,6 @@
         </p>
     </div>
 </footer>
-
-<script>
-    fetch("status").then(function (r) { return r.json(); }).then(function (s) {
-        document.getElementById("data_dir").textContent = s.data_dir;
-        document.getElementById("pub_key").textContent = s.public_key;
-        document.getElementById("pin_records").textContent =
-            s.pin_records + (s.pin_records === 1 ? " record" : " records");
-        document.getElementById("backup_paths").textContent = s.data_dir;
-
-        if (s.keys_created_this_run) {
-            document.getElementById("new_key_warning").style.display = "block";
-        }
-        if (s.migrated_from) {
-            document.getElementById("migrated_notice").style.display = "block";
-            document.getElementById("migrated_path").textContent =
-                "Imported from " + s.migrated_from + " — the original was left in place.";
-        }
-    }).catch(function () {
-        document.getElementById("data_dir").textContent =
-            "Could not reach the local server.";
-    });
-
-    // "Open data folder" only works inside the desktop app, which exposes a
-    // narrow bridge. In a plain browser we tell the user to copy the path.
-    document.getElementById("btn_open").addEventListener("click", function () {
-        if (window.boltJade && window.boltJade.openDataDir) {
-            window.boltJade.openDataDir();
-        } else {
-            document.getElementById("open_hint").textContent =
-                "Only available in the desktop app — copy the path above instead.";
-        }
-    });
-
-    document.querySelectorAll('a[href^="https://"]').forEach(function (a) {
-        a.setAttribute("target", "_blank");
-        a.setAttribute("rel", "noopener noreferrer");
-    });
-</script>
 
 </body>
 </html>

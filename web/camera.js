@@ -17,10 +17,22 @@
 
   function el(id) { return document.getElementById(id); }
 
+  /* Anything derived from a scanned QR code, a camera error, or a thrown
+   * exception is attacker-influenced. It must be escaped before it can reach
+   * innerHTML. Values passed through here are never trusted. */
+  function esc(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   function showAlert(kind, title, bodyHtml) {
     var box = el("cam_alert");
     box.className = "alert show " + kind;
-    box.innerHTML = "<strong>" + title + "</strong>" + (bodyHtml || "");
+    box.innerHTML = "<strong>" + esc(title) + "</strong>" + (bodyHtml || "");
   }
 
   function clearAlert() {
@@ -97,7 +109,7 @@
         "<b>Scan from image</b>.</p>");
     } else {
       showAlert("err", "Could not start the camera.",
-        "<p><code>" + name + ": " + msg + "</code></p>" +
+        "<p><code>" + esc(name) + ": " + esc(msg) + "</code></p>" +
         "<p>Use <b>Scan from image</b> below as a fallback.</p>");
     }
   }
@@ -124,7 +136,8 @@
       devices.forEach(function (d, i) {
         var o = document.createElement("option");
         o.value = d.id;
-        o.text = d.label || ("Camera " + (i + 1));
+        // Device labels come from the driver; set as text, never markup.
+        o.textContent = d.label || ("Camera " + (i + 1));
         sel.appendChild(o);
       });
 
@@ -229,7 +242,7 @@
 
     if (parts[0].toLowerCase() !== "ur:jade-pin") {
       showAlert("warn", "That is not a Jade PIN QR code.",
-        "<p>Scanned <code>" + parts[0].substring(0, 40) +
+        "<p>Scanned <code>" + esc(parts[0].substring(0, 40)) +
         "</code>. Make sure the Jade is showing Step 1/2.</p>");
       return;
     }
@@ -270,7 +283,7 @@
       scan_pin_request_done();
     } catch (e) {
       showAlert("err", "Could not decode the captured data.",
-        "<p><code>" + e.message + "</code></p>" +
+        "<p><code>" + esc(e.message) + "</code></p>" +
         "<p>Try scanning again — a frame may have been misread.</p>");
     }
   }

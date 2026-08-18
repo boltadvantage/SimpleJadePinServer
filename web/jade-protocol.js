@@ -513,7 +513,13 @@
                 if (urls.some(url => url.endsWith("set_pin"))) {
                     pin_func = "set_pin";
                 }
-                document.getElementById("pin_request").innerHTML = pin_func + "<br>data: " + request_data;
+                // request_data originates from a scanned QR code and is fully
+                // attacker-controlled. textContent, never innerHTML.
+                const req_el = document.getElementById("pin_request");
+                req_el.textContent = "";
+                req_el.appendChild(document.createTextNode(pin_func));
+                req_el.appendChild(document.createElement("br"));
+                req_el.appendChild(document.createTextNode("data: " + request_data));
                 document.getElementById("btn_step2").setAttribute("onclick", pin_func + "()");
                 document.getElementById("btn_step2").disabled = false;
             }
@@ -527,7 +533,7 @@
                 xhttp.onload = function() {
                     let json_response = JSON.parse(this.responseText);
                     let data = json_response.data;
-                    document.getElementById("pin_response").innerHTML = "data: " + data;
+                    document.getElementById("pin_response").textContent = "data: " + data;
 
                     if (typeof qrcode2_interval !== 'undefined') {
                         clearInterval(qrcode2_interval);
@@ -561,7 +567,7 @@
                 xhttp.onload = function() {
                     let json_response = JSON.parse(this.responseText);
                     let data = json_response.data;
-                    document.getElementById("pin_response").innerHTML = "data: " + data;
+                    document.getElementById("pin_response").textContent = "data: " + data;
 
                     if (typeof qrcode2_interval !== 'undefined') {
                         clearInterval(qrcode2_interval);

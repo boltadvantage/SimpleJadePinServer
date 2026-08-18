@@ -214,10 +214,16 @@ class MyServer(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         # Hard local-only policy: no external origins may ever be contacted.
         self.send_header("Content-Security-Policy",
-                         "default-src 'self' 'unsafe-inline' data: blob:; "
+                         "default-src 'none'; "
+                         # No 'unsafe-inline': an injected event handler such as
+                         # <img onerror=...> cannot execute under this policy.
+                         "script-src 'self'; "
+                         "style-src 'self' 'unsafe-inline'; "
                          "media-src 'self' blob: mediastream:; "
-                         "connect-src 'self'; img-src 'self' data: blob:; "
-                         "font-src 'self' data:; object-src 'none'; base-uri 'none'; "
+                         "connect-src 'self'; "
+                         "img-src 'self' data: blob:; "
+                         "font-src 'self'; "
+                         "object-src 'none'; base-uri 'none'; "
                          "form-action 'none'; frame-ancestors 'none'")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("X-Content-Type-Options", "nosniff")

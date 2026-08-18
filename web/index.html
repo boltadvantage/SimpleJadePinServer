@@ -11,6 +11,7 @@
     <script src="vendor/html5-qrcode.min.js"></script>
     <script src="jade-protocol.js"></script>
     <script src="camera.js"></script>
+    <script src="page-init.js"></script>
 </head>
 <body>
 
@@ -71,9 +72,7 @@
         </ol>
 
         <div class="btn-row" style="margin-top:18px;">
-            <button onclick="location.href='oracle_qr.html'">
-                Open Oracle QR generator →
-            </button>
+            <button id="btn_goto_oracle">Open Oracle QR generator →</button>
         </div>
     </section>
 
@@ -107,9 +106,7 @@
         <div style="margin-top:20px; padding-top:18px; border-top:1px solid var(--line);">
             <label>No camera? Use a fallback</label>
             <div class="btn-row">
-                <button class="ghost" onclick="document.getElementById('file_input').click()">
-                    Scan from image
-                </button>
+                <button id="btn_pick_file" class="ghost">Scan from image</button>
                 <button id="btn_manual" class="ghost">Paste UR text</button>
                 <input type="file" id="file_input" accept="image/*" style="display:none">
             </div>
@@ -176,16 +173,6 @@
         </p>
     </div>
 </footer>
-
-<script>
-    // Links must never open inside this window. In the desktop app the main
-    // process intercepts them and hands them to the system browser; in a plain
-    // browser they open a normal new tab. Either way the app itself stays local.
-    document.querySelectorAll('footer a[href^="https://"]').forEach(function (a) {
-        a.setAttribute("target", "_blank");
-        a.setAttribute("rel", "noopener noreferrer");
-    });
-</script>
 
 </body>
 </html>

@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="assets/bolt.css">
     <script src="qrcode.js"></script>
     <script src="oracle-qr.js"></script>
+    <script src="page-init.js"></script>
 </head>
 <body>
 
@@ -79,7 +80,7 @@
         </div>
 
         <div class="btn-row">
-            <button onclick="generate()">Generate QR code</button>
+            <button id="btn_generate">Generate QR code</button>
         </div>
 
         <div id="generated_qrcode" class="qr-display"></div>
@@ -106,17 +107,6 @@
         </p>
     </div>
 </footer>
-
-<script>
-    // Default urlA to wherever this page is actually being served from.
-    document.getElementById("urla").value =
-        window.location.protocol + "//" + window.location.host;
-
-    document.querySelectorAll('a[href^="https://"]').forEach(function (a) {
-        a.setAttribute("target", "_blank");
-        a.setAttribute("rel", "noopener noreferrer");
-    });
-</script>
 
 </body>
 </html>
