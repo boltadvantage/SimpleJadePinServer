@@ -71,8 +71,62 @@ class GracefulExitHandler:
         print("Server stopped")
         sys.exit(0)
 
+# A browser reaches a loopback service only by these names. A request arriving
+# under any other name means it was aimed at us under a different identity,
+# which is exactly what DNS rebinding does.
+ALLOWED_HOST_NAMES = {"127.0.0.1", "localhost", "::1", "[::1]"}
+
+# Set only when --listen is given a non-loopback address; see the note there.
+ALLOW_ANY_HOST = False
+
+
 class MyServer(BaseHTTPRequestHandler):
+    def _host_is_local(self):
+        """Reject DNS-rebinding attempts.
+
+        Without this, a page on evil.com whose DNS is re-pointed at 127.0.0.1
+        becomes same-origin with this server and can read every response,
+        including the data directory path and the server public key.
+        """
+        if ALLOW_ANY_HOST:
+            return True
+        host = self.headers.get("Host", "")
+        if host.startswith("["):
+            name = host.split("]")[0] + "]"
+        else:
+            name = host.rsplit(":", 1)[0] if ":" in host else host
+        return name in ALLOWED_HOST_NAMES
+
+    def _origin_is_local(self):
+        """Reject cross-site requests.
+
+        Any page can send a simple POST to a loopback port. It cannot read the
+        reply, since CORS headers are never sent, but the request still reaches
+        the oracle. Requests carrying a foreign Origin are refused outright.
+        """
+        origin = self.headers.get("Origin")
+        if origin is None:
+            return True  # non-browser client (Green, curl) sends no Origin
+        try:
+            hostname = urllib.parse.urlparse(origin).hostname
+        except ValueError:
+            return False
+        return hostname in ALLOWED_HOST_NAMES
+
+    def _guard(self):
+        if not self._host_is_local():
+            print(f"Rejected non-local Host: {self.headers.get('Host')!r}")
+            self._send(403, "text/plain; charset=utf-8", b"Forbidden")
+            return False
+        if not self._origin_is_local():
+            print(f"Rejected cross-origin request from {self.headers.get('Origin')!r}")
+            self._send(403, "text/plain; charset=utf-8", b"Forbidden")
+            return False
+        return True
+
     def do_POST(self):
+        if not self._guard():
+            return
         try:
             self._handle_post()
         except Exception as exc:
@@ -252,6 +306,9 @@ class MyServer(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
+        if not self._guard():
+            return
+
         request = urllib.parse.urlparse(self.path)
         rel = urllib.parse.unquote(request.path).lstrip("/")
 
@@ -476,6 +533,22 @@ if __name__ == "__main__":
     listen_ip = args.listen
     LISTEN_ADDR = listen_ip
     LISTEN_PORT = args.port
+
+    if listen_ip not in ("127.0.0.1", "localhost", "::1"):
+        # Host checking exists to stop DNS rebinding, a browser attack on a
+        # service only this machine should reach. Binding beyond loopback
+        # already surrenders that boundary, so the check is relaxed rather than
+        # enforced against a guessed list of local addresses, which would
+        # silently break on hosts whose interfaces did not enumerate as
+        # expected. Origin checking stays on regardless.
+        ALLOW_ANY_HOST = True
+        print("")
+        print(f"  WARNING: listening on {listen_ip}, beyond this machine.")
+        print("  Anyone who can reach this port can submit PIN attempts against")
+        print("  your stored records, and DNS-rebinding protection is relaxed.")
+        print("  The default 127.0.0.1 is correct for almost every setup.")
+        print("")
+
     server = HTTPServer((listen_ip, args.port), MyServer)
 
     if args.tls:

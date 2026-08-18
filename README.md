@@ -297,17 +297,14 @@ something else holds that port it falls back to a random one, and USB/BLE unlock
 will then fail. The **Keys & backup** page shows the address in use and warns
 when it is not the standard port. QR mode is unaffected either way.
 
-**If Green runs on another device** — a phone over Bluetooth, or a second
-computer — the server must be reachable across your network, which the desktop
-app deliberately does not do. Run the server directly instead:
+Green must run on the same machine as this application. That is the intended
+arrangement: the server binds `127.0.0.1` only, so nothing it does is reachable
+from any network, and an air-gapped machine needs nothing further.
 
-```bash
-python3 SimpleJadePinServer.py --no-tls --listen 0.0.0.0 --port 4443
-```
-
-Understand what that exposes: anyone who can reach that port can submit PIN
-attempts against your stored records. Use it on a trusted network only, and
-prefer keeping Green on the same machine where loopback suffices.
+A `--listen` option exists for the unusual case of Green running on a separate
+device, but it exposes PIN attempts to whoever can reach the port and relaxes
+DNS-rebinding protection. It is not needed for normal use, including on an
+air-gapped machine, and is best left alone.
 
 ![Green non-default oracle warning](docs/images/green_non_default_oracle_warning_advanced.png)
 
@@ -359,6 +356,15 @@ runner. The release workflow does this on an ephemeral CI matrix.
   outside it are rejected.
 - The desktop shell runs the renderer with `contextIsolation`, `sandbox`, and no
   Node integration. The preload exposes exactly one method.
+- Requests carrying a non-loopback `Host` header are refused, which blocks DNS
+  rebinding: without it, a page whose domain is re-pointed at `127.0.0.1`
+  becomes same-origin with this server and can read its responses, including the
+  data directory path and server public key.
+- Requests carrying a foreign `Origin` are refused, so a web page cannot drive
+  the oracle endpoints even blindly. No CORS headers are ever sent, so responses
+  are unreadable cross-origin regardless.
+- Stored PIN filenames derive from a SHA-256 hash and are always 64 hex
+  characters, so caller-influenced input cannot escape the pins directory.
 - Camera permission is granted only to the app's own loopback origin; every
   other permission, including microphone, is denied.
 - `wallycore` — the cryptographic library that ships inside the binary — is

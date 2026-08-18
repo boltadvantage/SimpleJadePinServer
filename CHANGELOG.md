@@ -15,6 +15,12 @@ Fixes USB and Bluetooth unlock, which did not work in 1.0.0.
 - **Malformed requests return an error instead of hanging.** Bad request bodies
   previously dropped the connection with no response, which was difficult to
   diagnose when Green was the client. They now return `400`.
+- **Blocked DNS rebinding and cross-site requests.** The server did not check
+  the `Host` header, so a web page whose domain was re-pointed at `127.0.0.1`
+  became same-origin with it and could read responses, including the data
+  directory path and server public key. Requests with a non-loopback `Host`, or
+  a foreign `Origin`, are now refused. Private keys and PIN records were never
+  reachable this way, and the wallet was never at risk.
 - **Documentation.** Restored instructions for pointing the Jade at the server
   over a USB cable with `set_jade_pinserver.py`, which is the practical route
   when a camera cannot scan the Oracle QR. USB and Bluetooth unlock are now
