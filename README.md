@@ -334,5 +334,7 @@ Modifications made in this fork (desktop packaging, offline hardening, camera
 handling, key management, styling) are offered by Bolt Advantage, LLC under the
 MIT license, to the extent they are separable from the original work.
 
+See [LICENSE](LICENSE) for the full text.
+
 If you are Filiprogrammer: we would be glad to see an explicit license on the
 upstream project, and will comply with whatever you choose.
